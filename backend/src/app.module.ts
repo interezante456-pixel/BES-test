@@ -16,9 +16,41 @@ import { AsignacionesModule } from './asignaciones/asignaciones.module';
 import { EstadisticasModule } from './estadisticas/estadisticas.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { AuditModule } from './audit/audit.module';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { HealthModule } from './health/health.module';
+import { ConfigModule } from '@nestjs/config';
+import * as Joi from 'joi';
 
 @Module({
   imports: [
+    // C8: Validación estricta de variables de entorno al arranque
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: Joi.object({
+        DATABASE_URL: Joi.string().required(),
+        ENCRYPTION_KEY: Joi.string().required(),
+        JWT_SECRET: Joi.string().required(),
+        REDIS_HOST: Joi.string().required(),
+        REDIS_PORT: Joi.number().default(6379),
+        PUPPETEER_HEADLESS: Joi.boolean().default(true),
+        PORT: Joi.number().default(3000),
+        BACKEND_URL: Joi.string().uri().required(),
+        FRONTEND_URL: Joi.string().uri().required(),
+        TELEGRAM_BOT_TOKEN: Joi.string().optional(),
+      }),
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: false,
+      },
+    }),
+    // C5: Rate Limiting global — máx 100 peticiones por minuto por IP
+    ThrottlerModule.forRoot([{
+      name: 'default',
+      ttl: 60000,
+      limit: 100,
+    }]),
+    HealthModule,
     AuditModule,
     UploadsModule,
     ScheduleModule.forRoot(),
@@ -46,6 +78,10 @@ import { AuditModule } from './audit/audit.module';
     EstadisticasModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // C5: Aplicar ThrottlerGuard globalmente
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

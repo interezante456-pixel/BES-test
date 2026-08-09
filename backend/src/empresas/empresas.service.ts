@@ -60,9 +60,9 @@ export class EmpresasService {
     const inicioAnio = new Date(`${anoActual}-01-01T00:00:00.000Z`);
     const finAnio = new Date(`${anoActual}-12-31T23:59:59.999Z`);
 
-    // ADMIN y SUPER_ADMIN ven TODAS las empresas con asignaciones completas
+    // ADMIN y SUPER_ADMIN ven TODAS las empresas del sistema
     if (userRol === 'SUPER_ADMIN' || userRol === 'ADMIN') {
-      const whereClause = userRol === 'SUPER_ADMIN' ? { usuarioId } : {};
+      const whereClause = {};
 
       const empresas = await this.prisma.empresa.findMany({
         where: whereClause,

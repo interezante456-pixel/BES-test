@@ -4,8 +4,19 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = 'admin@bes.com';
+  const oldAdminEmail = 'admin@bes.com';
+  const adminEmail = 'admin@oracon.com';
   const adminPassword = 'admin_password_2026';
+
+  // Si existe el antiguo admin@bes.com, actualizar su correo a admin@oracon.com para conservar su cuenta
+  const oldAdmin = await prisma.usuario.findUnique({ where: { email: oldAdminEmail } });
+  if (oldAdmin) {
+    await prisma.usuario.update({
+      where: { id: oldAdmin.id },
+      data: { email: adminEmail, apellidos: 'ORACON' },
+    });
+    console.log('🔄 Usuario admin@bes.com migrado exitosamente a admin@oracon.com');
+  }
 
   const existingAdmin = await prisma.usuario.findUnique({
     where: { email: adminEmail },
@@ -17,7 +28,7 @@ async function main() {
       data: {
         email: adminEmail,
         nombres: 'Super Admin',
-        apellidos: 'BES',
+        apellidos: 'ORACON',
         dni: '00000000',
         password: hashedPassword,
         rol: Role.SUPER_ADMIN,
@@ -27,7 +38,7 @@ async function main() {
     console.log(`Email: ${adminEmail}`);
     console.log(`Password: ${adminPassword}`);
   } else {
-    console.log('⚠️ El Super Admin ya existe.');
+    console.log('⚠️ El Super Admin (admin@oracon.com) ya existe.');
   }
 }
 

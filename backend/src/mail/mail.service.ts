@@ -64,17 +64,17 @@ export class MailService {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
 
     const info = await this.transporter.sendMail({
-      from: '"BES Alertas" <alertas@bes.com>',
+      from: '"ORACON Alertas" <alertas@oracon.com>',
       to,
       subject: `⚠️ URGENTE: Nueva Notificación SUNAT - ${empresaNombre}`,
       html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ff4444; border-radius: 8px;">
-          <h2 style="color: #ff4444;">Alerta Urgente SUNAT</h2>
-          <p>Estimado usuario, el robot de BES ha detectado una notificación de alta prioridad para la empresa <strong>${empresaNombre}</strong>.</p>
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 2px solid #FF5500; border-radius: 12px; background-color: #0B0F17; color: #FFFFFF;">
+          <h2 style="color: #FF5500; margin-top: 0;">ORACON — Alerta Urgente SUNAT</h2>
+          <p>Estimado usuario, el robot de <strong>ORACON (Estudio Contable)</strong> ha detectado una notificación de alta prioridad para la empresa <strong>${empresaNombre}</strong>.</p>
           <p><strong>Asunto del documento:</strong> ${asunto}</p>
-          <p>Por favor, inicie sesión en su panel de BES para revisar el documento PDF inmediatamente y evitar multas o embargos.</p>
+          <p style="color: #E5E7EB;">Por favor, inicie sesión en su panel de ORACON para revisar el documento PDF inmediatamente y evitar multas o embargos.</p>
           <br/>
-          <a href="${frontendUrl}/dashboard" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Ver en BES Panel</a>
+          <a href="${frontendUrl}/dashboard" style="background: linear-gradient(135deg, #FF5500, #E64A00); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Ver en ORACON Panel</a>
         </div>
       `,
     });
@@ -99,27 +99,27 @@ export class MailService {
     const listaHtml = fallos
       .map(
         (f, i) => `
-      <tr style="background:${i % 2 === 0 ? '#f9f9f9' : '#fff'}">
-        <td style="padding:8px 12px; border-bottom:1px solid #eee;">${f.fecha}</td>
-        <td style="padding:8px 12px; border-bottom:1px solid #eee;">${f.asunto}</td>
+      <tr style="background:${i % 2 === 0 ? '#1f2937' : '#111827'}; color: #fff;">
+        <td style="padding:8px 12px; border-bottom:1px solid #374151;">${f.fecha}</td>
+        <td style="padding:8px 12px; border-bottom:1px solid #374151;">${f.asunto}</td>
       </tr>
     `,
       )
       .join('');
 
     const info = await this.transporter.sendMail({
-      from: '"BES Alertas" <alertas@bes.com>',
+      from: '"ORACON Alertas" <alertas@oracon.com>',
       to,
       subject: `📋 Resumen: ${fallos.length} documento(s) sin PDF - ${empresaNombre}`,
       html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #f59e0b; border-radius: 8px; max-width: 700px;">
-          <h2 style="color: #d97706;">⚠️ Documentos sin PDF disponible</h2>
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #FF5500; border-radius: 12px; max-width: 700px; background-color: #0B0F17; color: #FFFFFF;">
+          <h2 style="color: #FF5500; margin-top: 0;">ORACON — Documentos sin PDF disponible</h2>
           <p>Durante la sincronización de <strong>${empresaNombre}</strong>, los siguientes documentos fueron registrados pero <strong>no se pudo descargar su archivo PDF</strong> desde los servidores de SUNAT.</p>
-          <p>Esto puede deberse a documentos expirados, permisos insuficientes o indisponibilidad temporal del servidor.</p>
+          <p style="color: #9CA3AF;">Esto puede deberse a documentos expirados, permisos insuficientes o indisponibilidad temporal del servidor.</p>
           <br/>
           <table style="width:100%; border-collapse:collapse; font-size:14px;">
             <thead>
-              <tr style="background:#f59e0b; color:white;">
+              <tr style="background:#FF5500; color:white;">
                 <th style="padding:10px 12px; text-align:left;">Fecha</th>
                 <th style="padding:10px 12px; text-align:left;">Asunto</th>
               </tr>
@@ -127,8 +127,8 @@ export class MailService {
             <tbody>${listaHtml}</tbody>
           </table>
           <br/>
-          <p style="color:#666; font-size:13px;">Los títulos de estos documentos <strong>sí fueron guardados</strong> en el panel con estado "SIN PDF". Puede revisarlos iniciando sesión.</p>
-          <a href="${frontendUrl}/dashboard" style="background-color:#d97706; color:white; padding:10px 20px; text-decoration:none; border-radius:5px; font-weight:bold; display:inline-block; margin-top:10px;">Ver en BES Panel</a>
+          <p style="color:#9CA3AF; font-size:13px;">Los títulos de estos documentos <strong>sí fueron guardados</strong> en el panel con estado "SIN PDF". Puede revisarlos iniciando sesión.</p>
+          <a href="${frontendUrl}/dashboard" style="background: linear-gradient(135deg, #FF5500, #E64A00); color:white; padding:12px 24px; text-decoration:none; border-radius:8px; font-weight:bold; display:inline-block; margin-top:10px;">Ver en ORACON Panel</a>
         </div>
       `,
     });

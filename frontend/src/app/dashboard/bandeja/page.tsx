@@ -12,6 +12,8 @@ import { ZipExportButton } from '../components/ZipExportButton';
 
 function BandejaContent() {
   const [notificaciones, setNotificaciones] = useState<any[]>([]);
+  const [meta, setMeta] = useState({ total: 0, page: 1, lastPage: 1 });
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedNotifForDrawer, setSelectedNotifForDrawer] = useState<any | null>(null);
   const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
@@ -27,20 +29,35 @@ function BandejaContent() {
   const empresaFilterId = searchParams.get('empresa');
 
   const fetchNotificaciones = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/notificaciones');
-      // La API ya devuelve solo las NO LEÍDAS por este usuario
-      setNotificaciones(res.data);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '50',
+      });
+      if (empresaFilterId) params.append('empresa', empresaFilterId);
+      if (searchTerm) params.append('search', searchTerm);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const res = await api.get(`/notificaciones?${params.toString()}`);
+      setNotificaciones(res.data.data);
+      setMeta(res.data.meta);
     } catch (error) {
       console.error("Error loading notifications", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, empresaFilterId, searchTerm, startDate, endDate]);
 
   useEffect(() => {
     if (isAuthenticated) fetchNotificaciones();
   }, [isAuthenticated, fetchNotificaciones]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, startDate, endDate, empresaFilterId]);
 
   const markAsRead = async (id: string) => {
     try {
@@ -77,26 +94,8 @@ function BandejaContent() {
     fetchStats();
   };
 
-  const filteredData = notificaciones.filter(notif => {
-    if (empresaFilterId && notif.empresa.id !== empresaFilterId) return false;
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      if (!notif.empresa.ruc.includes(term) && 
-          !notif.empresa.razonSocial.toLowerCase().includes(term) && 
-          !notif.asunto.toLowerCase().includes(term)) return false;
-    }
-    if (startDate) {
-      const start = new Date(startDate + 'T00:00:00');
-      const notifDate = new Date(notif.fechaMensaje);
-      if (notifDate < start) return false;
-    }
-    if (endDate) {
-      const end = new Date(endDate + 'T23:59:59');
-      const notifDate = new Date(notif.fechaMensaje);
-      if (notifDate > end) return false;
-    }
-    return true;
-  });
+  // Client-side filtering is no longer needed, the server handles it.
+  const filteredData = notificaciones;
 
   return (
     <div className="space-y-6">
@@ -301,10 +300,14 @@ function BandejaContent() {
                             e.stopPropagation();
                             setRetrying((prev) => ({ ...prev, [notif.id]: true }));
                             try {
-                              await api.post(`/scraper/retry-pdf/${notif.id}`);
-                              fetchNotificaciones();
-                            } catch {
-                              alert('No se pudo recuperar el PDF. Inténtalo más tarde.');
+                              const res = await api.post(`/scraper/retry-pdf/${notif.id}`, {}, { timeout: 120000 });
+                              if (res.data?.success) {
+                                fetchNotificaciones();
+                              } else {
+                                alert(res.data?.message || 'No se pudo recuperar el PDF desde SUNAT. Es posible que el documento haya expirado.');
+                              }
+                            } catch (err: any) {
+                              alert('No se pudo recuperar el PDF en este momento. Inténtalo más tarde.');
                             } finally {
                               setRetrying((prev) => ({ ...prev, [notif.id]: false }));
                             }
@@ -326,6 +329,32 @@ function BandejaContent() {
               </div>
             ))}
           </div>
+
+          {/* Pagination Controls */}
+          {meta.lastPage > 1 && (
+            <div className="p-4 border-t border-white/5 flex items-center justify-between bg-white/[0.02]">
+              <div className="text-sm text-gray-400">
+                Mostrando página <span className="text-white font-medium">{meta.page}</span> de <span className="text-white font-medium">{meta.lastPage}</span>
+                {' '}({meta.total} notificaciones)
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={meta.page <= 1}
+                  className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(meta.lastPage, p + 1))}
+                  disabled={meta.page >= meta.lastPage}
+                  className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -27,6 +27,8 @@ interface Stats {
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [startMonth, setStartMonth] = useState('');
+  const [endMonth, setEndMonth] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -48,6 +50,12 @@ export default function DashboardPage() {
   }
 
   const maxDia = Math.max(...(stats?.sincroPorDia.map(d => d.cantidad) || [1]), 1);
+
+  const filteredHistorico = (stats?.historicoMensual || []).filter(item => {
+    if (startMonth && item.mesKey < startMonth) return false;
+    if (endMonth && item.mesKey > endMonth) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-8">
@@ -251,7 +259,47 @@ export default function DashboardPage() {
       </div>
 
       {/* Histórico General de Alertas (Vista Mensual Completa) */}
-      <HistoricoLineChart data={stats?.historicoMensual || []} />
+      <div className="bg-[#111827] rounded-3xl border border-white/5 overflow-hidden p-6 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
+          <div>
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Flame className="w-5 h-5 text-rose-500" />
+              Histórico General de Alertas (Vista Mensual)
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">Evolución histórica y volumen de notificaciones acumuladas por mes</p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-white/[0.02] px-3 py-1.5 rounded-xl border border-white/5">
+              <span className="text-xs text-gray-500 font-semibold">Desde:</span>
+              <input
+                type="month"
+                value={startMonth}
+                onChange={(e) => setStartMonth(e.target.value)}
+                className="bg-transparent border-none text-white outline-none text-sm [color-scheme:dark] cursor-pointer"
+              />
+            </div>
+            <div className="flex items-center gap-2 bg-white/[0.02] px-3 py-1.5 rounded-xl border border-white/5">
+              <span className="text-xs text-gray-500 font-semibold">Hasta:</span>
+              <input
+                type="month"
+                value={endMonth}
+                onChange={(e) => setEndMonth(e.target.value)}
+                className="bg-transparent border-none text-white outline-none text-sm [color-scheme:dark] cursor-pointer"
+              />
+            </div>
+            {(startMonth || endMonth) && (
+              <button
+                onClick={() => { setStartMonth(''); setEndMonth(''); }}
+                className="text-xs text-gray-400 hover:text-white transition-colors underline underline-offset-2"
+              >
+                Limpiar Filtros
+              </button>
+            )}
+          </div>
+        </div>
+        <HistoricoLineChart data={filteredHistorico} />
+      </div>
     </div>
   );
 }
@@ -261,7 +309,7 @@ function HistoricoLineChart({ data }: { data: { mesKey: string; mesNombre: strin
 
   if (!data || data.length === 0) {
     return (
-      <div className="bg-[#111827] rounded-3xl border border-white/5 p-6 text-center text-gray-500">
+      <div className="bg-[#111827] rounded-xl border border-white/5 p-6 text-center text-gray-500">
         <p className="text-sm">No hay datos suficientes para el histórico acumulado.</p>
       </div>
     );
@@ -302,18 +350,9 @@ function HistoricoLineChart({ data }: { data: { mesKey: string; mesNombre: strin
     : '';
 
   return (
-    <div className="bg-[#111827] rounded-3xl border border-white/5 overflow-hidden p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
-        <div>
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Flame className="w-5 h-5 text-rose-500" />
-            Histórico General de Alertas (Vista Mensual)
-          </h3>
-          <p className="text-xs text-gray-500 mt-1">Evolución histórica y volumen de notificaciones acumuladas por mes</p>
-        </div>
-
-        {/* Legend */}
-        <div className="flex items-center gap-4 text-xs">
+    <div className="w-full space-y-4">
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-xs justify-end">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-rose-500" />
             <span className="text-rose-400 font-semibold">Peligrosas</span>
@@ -327,7 +366,6 @@ function HistoricoLineChart({ data }: { data: { mesKey: string; mesNombre: strin
             <span className="text-cyan-300 font-semibold">Total Mensual</span>
           </div>
         </div>
-      </div>
 
       <div className="relative w-full overflow-x-auto">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-w-[600px] overflow-visible">

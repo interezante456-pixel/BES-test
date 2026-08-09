@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "BES Auto-Fill SUNAT",
+  "name": "ORACON Auto-Fill SUNAT",
   "version": "1.0.1",
-  "description": "Autocompleta el RUC, Usuario SOL y Clave SOL en el portal de la SUNAT desde el sistema BES.",
+  "description": "Autocompleta el RUC, Usuario SOL y Clave SOL en el portal de la SUNAT desde el sistema ORACON.",
   "permissions": [
     "storage",
     "activeTab"
@@ -28,6 +28,6 @@
     }
   ],
   "action": {
-    "default_title": "BES Auto-Fill SUNAT"
+    "default_title": "ORACON Auto-Fill SUNAT"
   }
 }

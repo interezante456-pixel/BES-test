@@ -6,6 +6,7 @@ import { MailService } from '../mail/mail.service';
 import { TelegramService } from '../mail/telegram.service';
 import { WhatsappService } from '../mail/whatsapp.service';
 import { PdfParserService } from './pdf-parser.service';
+import { isUrgentAsunto } from '../common/notificacion-classifier';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -48,6 +49,122 @@ export class ScraperService {
       where: { id: empresaId },
       data: { estadoSincro: status },
     });
+  }
+
+  /**
+   * A2: Lanza una instancia de Puppeteer con la configuración estándar del sistema.
+   * Punto único de verdad para los flags de Chrome — cambiar aquí afecta a todos los flujos.
+   */
+  private async launchBrowser() {
+    const isHeadless =
+      process.env.PUPPETEER_HEADLESS?.replace(/['\"]/g, '').trim() === 'true';
+    this.logger.log(
+      `Iniciando Puppeteer. PUPPETEER_HEADLESS="${process.env.PUPPETEER_HEADLESS}" → Headless: ${isHeadless}`,
+    );
+    const browser = await puppeteer.launch({
+      headless: isHeadless,
+      defaultViewport: { width: 1920, height: 1080 },
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--start-maximized',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+        '--incognito',
+        '--disable-features=PasswordLeakDetection,AutofillServerCommunication',
+        '--disable-save-password-bubble',
+        '--password-store=basic',
+      ],
+    });
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    page.setDefaultNavigationTimeout(60000);
+    await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    );
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'es-ES,es;q=0.9' });
+    page.on('dialog', async (dialog) => {
+      this.logger.log(`Diálogo detectado: [${dialog.type()}] ${dialog.message()}. Aceptando...`);
+      await dialog.accept();
+    });
+    return { browser, page };
+  }
+
+  /**
+   * A2: Realiza el login completo en el portal SUNAT para una empresa.
+   * Incluye 3 reintentos de conexión y manejo de popups post-login.
+   */
+  private async loginToSunat(page: any, empresa: any, password: string) {
+    const sunatPortalUrl = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm';
+    this.logger.log(`Navegando a SUNAT para RUC ${empresa.ruc}`);
+
+    let connected = false;
+    for (let i = 0; i < 3; i++) {
+      try {
+        await page.goto(sunatPortalUrl, { waitUntil: 'networkidle0', timeout: 60000 });
+        connected = true;
+        break;
+      } catch (e) {
+        this.logger.warn(`Intento ${i + 1} fallido (RUC ${empresa.ruc}), reintentando en 5s...`);
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+    }
+    if (!connected) throw new Error('No se pudo establecer conexión con SUNAT tras varios intentos.');
+
+    await page.waitForSelector('#txtRuc', { timeout: 20000 });
+    await page.type('#txtRuc', empresa.ruc);
+    await page.type('#txtUsuario', empresa.usuarioSol);
+    await page.type('#txtContrasena', password);
+    await new Promise((r) => setTimeout(r, 1000));
+
+    this.logger.log('Haciendo clic y esperando dashboard principal de SUNAT...');
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }).catch(() => null),
+      page.click('#btnAceptar'),
+    ]);
+
+    await this.handleSunatPopups(page);
+
+    const isLogged = await page.evaluate(() =>
+      !!document.querySelector('#aBuzon, .icon-buzon, [title*="Buzón"]'),
+    );
+    if (!isLogged) {
+      this.logger.warn('⚠️ No se detectó el buzón tras el login, posible pantalla extra...');
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+
+  /**
+   * A2: Navega al Buzón Electrónico desde el panel principal de SUNAT.
+   */
+  private async navigateToBuzon(page: any) {
+    this.logger.log('Navegando automáticamente al Buzón Electrónico...');
+    try {
+      const closeButton = await page.$(
+        'button[aria-label="Close"], .modal-header .close, #btnCerrarAviso',
+      );
+      if (closeButton) await closeButton.click();
+
+      const buzonButton = await page.evaluateHandle(() =>
+        [...document.querySelectorAll('a, button')].find((el) =>
+          el.textContent?.includes('Buzón Electrónico'),
+        ),
+      );
+      if (buzonButton && (buzonButton as any).asElement()) {
+        await (buzonButton as any).asElement().click();
+      } else {
+        await page.waitForSelector('#aBuzon, .icon-buzon, [title*="Buzón"]', { timeout: 5000 });
+        await page.click('#aBuzon, .icon-buzon, [title*="Buzón"]');
+      }
+    } catch (e) {
+      await page.goto(
+        'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm?pestana=*&agrupacion=*',
+        { waitUntil: 'networkidle2' },
+      );
+    }
+    await new Promise((r) => setTimeout(r, 20000));
   }
 
   private async handleSunatPopups(page: Page) {
@@ -192,140 +309,14 @@ export class ScraperService {
 
     const password = this.encryptionService.decrypt(empresa.claveSol);
 
-    const isHeadless =
-      process.env.PUPPETEER_HEADLESS?.replace(/['"]/g, '').trim() === 'true';
-    this.logger.log(
-      `Iniciando Puppeteer. Variable de entorno PUPPETEER_HEADLESS: "${process.env.PUPPETEER_HEADLESS}" -> ¿Modo Oculto?: ${isHeadless}`,
-    );
+    // A2: Usar métodos privados reutilizables en lugar de código duplicado
+    const { browser, page } = await this.launchBrowser();
 
-    const browser = await puppeteer.launch({
-      headless: isHeadless,
-      defaultViewport: { width: 1920, height: 1080 },
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--start-maximized',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote',
-        '--incognito',
-        '--disable-features=PasswordLeakDetection,AutofillServerCommunication',
-        '--disable-save-password-bubble',
-        '--password-store=basic',
-      ],
-    });
-
-    const context = await browser.createBrowserContext();
-    const page = await context.newPage();
-    page.setDefaultNavigationTimeout(60000);
-
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    );
-    await page.setExtraHTTPHeaders({
-      'Accept-Language': 'es-ES,es;q=0.9',
-    });
-
-    page.on('dialog', async (dialog) => {
-      this.logger.log(
-        `Diálogo detectado: [${dialog.type()}] ${dialog.message()}. Aceptando...`,
-      );
-      await dialog.accept();
-    });
 
     try {
-      this.logger.log(`Navegando a SUNAT para RUC ${empresa.ruc}`);
-      const sunatPortalUrl =
-        'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm';
-
-      let connected = false;
-      for (let i = 0; i < 3; i++) {
-        try {
-          await page.goto(sunatPortalUrl, {
-            waitUntil: 'networkidle0',
-            timeout: 60000,
-          });
-          connected = true;
-          break;
-        } catch (e) {
-          this.logger.warn(
-            `Intento ${i + 1} fallido (RUC ${empresa.ruc}), reintentando en 5s...`,
-          );
-          await new Promise((r) => setTimeout(r, 5000));
-        }
-      }
-
-      if (!connected)
-        throw new Error(
-          'No se pudo establecer conexión con SUNAT tras varios intentos.',
-        );
-
-      await page.waitForSelector('#txtRuc', { timeout: 20000 });
-      await page.type('#txtRuc', empresa.ruc);
-      await page.type('#txtUsuario', empresa.usuarioSol);
-      await page.type('#txtContrasena', password);
-
-      await new Promise((r) => setTimeout(r, 1000));
-
-      this.logger.log(
-        `Haciendo clic y esperando dashboard principal de SUNAT...`,
-      );
-      // Prevenir Race Condition: Lanzamos la promesa de navegación ANTES o al mismo tiempo que el clic
-      await Promise.all([
-        page
-          .waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 })
-          .catch(() => null),
-        page.click('#btnAceptar'),
-      ]);
-
-      // Evasión de ventanas emergentes o validación de contacto de SUNAT
-      await this.handleSunatPopups(page);
-
-      // Verificación de seguridad: Comprobar que realmente estamos dentro
-      const isLogged = await page.evaluate(() => {
-        return !!document.querySelector(
-          '#aBuzon, .icon-buzon, [title*="Buzón"]',
-        );
-      });
-
-      if (!isLogged) {
-        this.logger.warn(
-          '⚠️ No se detectó el buzón tras el login, posible pantalla de confirmación extra...',
-        );
-      }
-
-      await new Promise((r) => setTimeout(r, 2000));
-      this.logger.log(`Navegando automáticamente al Buzón Electrónico...`);
-
-      try {
-        const closeButton = await page.$(
-          'button[aria-label="Close"], .modal-header .close, #btnCerrarAviso',
-        );
-        if (closeButton) await closeButton.click();
-
-        const buzonButton = await page.evaluateHandle(() => {
-          return [...document.querySelectorAll('a, button')].find((el) =>
-            el.textContent?.includes('Buzón Electrónico'),
-          );
-        });
-
-        if (buzonButton && (buzonButton as any).asElement()) {
-          await (buzonButton as any).asElement().click();
-        } else {
-          await page.waitForSelector('#aBuzon, .icon-buzon, [title*="Buzón"]', {
-            timeout: 5000,
-          });
-          await page.click('#aBuzon, .icon-buzon, [title*="Buzón"]');
-        }
-      } catch (e) {
-        await page.goto(
-          'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm?pestana=*&agrupacion=*',
-          { waitUntil: 'networkidle2' },
-        );
-      }
-
-      await new Promise((r) => setTimeout(r, 20000));
+      // A2: Login y navegación al buzón mediante helpers centralizados
+      await this.loginToSunat(page, empresa, password);
+      await this.navigateToBuzon(page);
 
       const uploadDir = path.join(process.cwd(), 'uploads');
       if (!fs.existsSync(uploadDir))
@@ -396,12 +387,13 @@ export class ScraperService {
             if (element) containersArray.push(element);
           }
 
-          this.logger.log(
+          this.logger.debug(
             `Detectadas ${containersArray.length} filas reales procesadas en milisegundos.`,
           );
 
           let lastFileId = '';
           let consecutivasAnioAnterior = 0; // Counter para break temprano
+          let primerDuplicadoEncontrado = false; // FLAG: detener al encontrar primera duplicada
 
           for (const container of containersArray) {
             try {
@@ -446,7 +438,7 @@ export class ScraperService {
               // BREAK TEMPRANO: Si esta fila es del año anterior, aumentar contador
               if (rowFecha.getFullYear() < anoActual) {
                 consecutivasAnioAnterior++;
-                this.logger.log(
+                this.logger.debug(
                   `⏭️ Fila del ${rowFecha.getFullYear()} (${consecutivasAnioAnterior}/2 consecutivas): ${rowData.asunto.substring(0, 50)}`,
                 );
                 if (consecutivasAnioAnterior >= 2) {
@@ -479,12 +471,15 @@ export class ScraperService {
               }
               lastFileId = currentId;
 
-              // IDEMPOTENCIA: Si este fileId ya existe en BD, saltar (no descargar ni insertar)
+              // IDEMPOTENCIA: Si este fileId ya existe en BD, detener el escaneo completo.
+              // El buzón de SUNAT está en orden cronológico descendente: si esta notificación
+              // ya existe en BD, todas las siguientes también existen → no tiene sentido continuar.
               if (currentId && fileIdsExistentes.has(currentId)) {
                 this.logger.log(
-                  `⏭️ Ya existe en BD: ${currentId}. Saltando descarga.`,
+                  `🛑 Notificación ya existe en BD (fileId: ${currentId}). Deteniendo escaneo — el resto ya está sincronizado.`,
                 );
-                continue;
+                primerDuplicadoEncontrado = true;
+                break;
               }
 
               const data = await mainFrame.evaluate(() => {
@@ -619,7 +614,7 @@ export class ScraperService {
                       ) {
                         const fileName = `${docInfo.internalId}.pdf`; // <-- Nombre de archivo 100% único
                         const filePath = path.join(uploadDir, fileName);
-                        fs.writeFileSync(filePath, buffer);
+                        await fs.promises.writeFile(filePath, buffer);
                         const backendUrl =
                           process.env.BACKEND_URL || 'http://localhost:4000';
                         finalHref = `${backendUrl}/uploads/${fileName}`;
@@ -693,7 +688,7 @@ export class ScraperService {
                         ) {
                           const fileName = `${alternativeId}.pdf`;
                           const filePath = path.join(uploadDir, fileName);
-                          fs.writeFileSync(filePath, buffer);
+                          await fs.promises.writeFile(filePath, buffer);
                           const backendUrl =
                             process.env.BACKEND_URL || 'http://localhost:4000';
                           finalHref = `${backendUrl}/uploads/${fileName}`;
@@ -743,6 +738,17 @@ export class ScraperService {
                   pdfsFallidos.push({ asunto, fecha: dateMatch[1] });
                 }
 
+                // IDEMPOTENCIA PROFUNDA: verificar el fileId REAL (del escaneo profundo)
+                // contra la BD. El currentId puede ser el ID de la constancia (diferente al
+                // fileId del documento real), por eso esta segunda verificación es necesaria.
+                if (fileId && fileIdsExistentes.has(fileId)) {
+                  this.logger.log(
+                    `🛑 fileId real (${fileId}) ya existe en BD. Deteniendo escaneo — todo el resto ya está sincronizado.`,
+                  );
+                  primerDuplicadoEncontrado = true;
+                  break;
+                }
+
                 if (tipoMensaje === 'NOTIFICACION') {
                   // Agregar a la lista de NUEVAS (no duplicadas) para insertar
                   notificacionesNuevas.push({
@@ -764,6 +770,9 @@ export class ScraperService {
             } catch (err) {
               this.logger.warn(`Error en fila: ${err.message}`);
             }
+
+            // Early exit: si se detectó duplicado, salir del loop principal
+            if (primerDuplicadoEncontrado) break;
           }
         }
         notificacionesExtraidas = notificacionesNuevas;
@@ -788,10 +797,7 @@ export class ScraperService {
       }
 
       for (const notif of notificacionesExtraidas) {
-        if (
-          notif.asunto.toLowerCase().includes('orden de pago') ||
-          notif.asunto.toLowerCase().includes('esquela')
-        ) {
+        if (isUrgentAsunto(notif.asunto)) {
           // Dispatch multicanal: Email + Telegram + WhatsApp
           let emailSent = false;
           for (let attempt = 1; attempt <= 3; attempt++) {
@@ -1165,7 +1171,7 @@ export class ScraperService {
             const resId = numResolucion || currentId || idArchivoFromDatos;
             const fileName = `${resId}_resolucion.pdf`;
             const filePath = path.join(uploadDir, fileName);
-            fs.writeFileSync(filePath, pdfBuffer);
+            await fs.promises.writeFile(filePath, pdfBuffer);
             const backendUrl =
               process.env.BACKEND_URL || 'http://localhost:4000';
             const pdfRuta = `${backendUrl}/uploads/${fileName}`;
@@ -1220,8 +1226,7 @@ export class ScraperService {
     const filePath = path.join(uploadDir, fileName);
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
     const finalHref = `${backendUrl}/uploads/${fileName}`;
-
-    if (fs.existsSync(filePath)) {
+if (fs.existsSync(filePath)) {
       const buf = fs.readFileSync(filePath);
       if (buf.length > 1000 || buf.toString('utf8', 0, 4) === '%PDF') {
         const extracted = await this.pdfParserService.parsePdfBuffer(buf);
@@ -1231,104 +1236,34 @@ export class ScraperService {
             rutaArchivoPdf: finalHref,
             estado: 'NO_LEIDO',
             fileId: targetFileId,
-            montoExigible: extracted.montoExigible,
-            expedienteCoactivo: extracted.expedienteCoactivo,
+            asunto: notif.asunto,
+            ...extracted,
           },
         });
-        return { success: true, rutaArchivoPdf: finalHref };
+        return { success: true, url: finalHref };
       }
     }
 
     const empresa = notif.empresa;
+
     this.logger.log(`🔄 Reintentando PDF (${targetFileId}) para ${empresa.razonSocial}...`);
 
-    const isHeadless =
-      process.env.PUPPETEER_HEADLESS?.replace(/['"]/g, '').trim() === 'true';
+    const password = this.encryptionService.decrypt(empresa.claveSol);
 
-    let browser;
+    let browser: any;
+    let page: any;
     try {
-      browser = await puppeteer.launch({
-        headless: isHeadless,
-        defaultViewport: { width: 1920, height: 1080 },
-        args: [
-          '--no-sandbox', '--disable-setuid-sandbox', '--start-maximized',
-          '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run',
-          '--no-zygote', '--incognito',
-          '--disable-features=PasswordLeakDetection,AutofillServerCommunication',
-          '--disable-save-password-bubble', '--password-store=basic',
-        ],
-      });
+      // A2: Usar helpers reutilizables — misma config que checkBuzonForEmpresa
+      ({ browser, page } = await this.launchBrowser());
+      await this.loginToSunat(page, empresa, password);
+      await this.navigateToBuzon(page);
 
-      const context = await browser.createBrowserContext();
-      const page = await context.newPage();
-      page.setDefaultNavigationTimeout(60000);
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-      await page.setExtraHTTPHeaders({ 'Accept-Language': 'es-ES,es;q=0.9' });
-
-      const password = this.encryptionService.decrypt(empresa.claveSol);
-
-      // Login en portal SUNAT
-      let connected = false;
-      for (let i = 0; i < 3; i++) {
-        try {
-          await page.goto('https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm', {
-            waitUntil: 'networkidle0', timeout: 60000,
-          });
-          connected = true;
-          break;
-        } catch (e) {
-          await new Promise((r) => setTimeout(r, 3000));
-        }
-      }
-      if (!connected) throw new Error('No se pudo conectar al portal de SUNAT.');
-
-      await page.waitForSelector('#txtRuc', { timeout: 20000 });
-      await page.type('#txtRuc', empresa.ruc);
-      await page.type('#txtUsuario', empresa.usuarioSol);
-      await page.type('#txtContrasena', password);
-      await new Promise((r) => setTimeout(r, 1000));
-      await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }).catch(() => null),
-        page.click('#btnAceptar'),
-      ]);
-      await this.handleSunatPopups(page);
-
-      // ── NAVEGACIÓN AL BUZÓN: idéntica a checkBuzonForEmpresa ──────────────
-      await new Promise((r) => setTimeout(r, 2000));
-      this.logger.log(`🌐 Navegando al Buzón Electrónico...`);
-
-      try {
-        const closeButton = await page.$('button[aria-label="Close"], .modal-header .close, #btnCerrarAviso');
-        if (closeButton) await closeButton.click();
-
-        const buzonButton = await page.evaluateHandle(() =>
-          [...document.querySelectorAll('a, button')].find((el) =>
-            el.textContent?.includes('Buzón Electrónico'),
-          ),
-        );
-        if (buzonButton && (buzonButton as any).asElement()) {
-          await (buzonButton as any).asElement().click();
-        } else {
-          await page.waitForSelector('#aBuzon, .icon-buzon, [title*="Buzón"]', { timeout: 5000 });
-          await page.click('#aBuzon, .icon-buzon, [title*="Buzón"]');
-        }
-      } catch {
-        await page.goto(
-          'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm?pestana=*&agrupacion=*',
-          { waitUntil: 'networkidle2' },
-        );
-      }
-
-      // Esperar a que el Buzón cargue completamente (iframes internos)
-      this.logger.log(`⏳ Esperando carga completa del Buzón (20s)...`);
-      await new Promise((r) => setTimeout(r, 20000));
-
-      // Obtener el frame del visor (igual que en checkBuzonForEmpresa)
+      // Obtener el frame del visor
       const framesList = page.frames();
-      this.logger.log(`🔍 Frames activos: ${framesList.map((f) => f.url().substring(0, 70)).join(' | ')}`);
+      this.logger.log(`🔍 Frames activos: ${framesList.map((f: any) => f.url().substring(0, 70)).join(' | ')}`);
 
       const visorFrame = framesList.find(
-        (f) => f.url().includes('visor') || f.url().includes('master'),
+        (f: any) => f.url().includes('visor') || f.url().includes('master'),
       );
 
       if (!visorFrame) {
@@ -1572,7 +1507,7 @@ export class ScraperService {
             try {
               const htmlDebug = await visorFrame.evaluate(() => (window as any).__lastGenHtml || '');
               if (htmlDebug) {
-                fs.writeFileSync(path.join(uploadDir, 'debug_genhtml.html'), htmlDebug);
+                await fs.promises.writeFile(path.join(uploadDir, 'debug_genhtml.html'), htmlDebug);
                 this.logger.log(`💾 HTML de depuración guardado en uploads/debug_genhtml.html (${htmlDebug.length} bytes)`);
               }
             } catch (_) {}
@@ -1582,7 +1517,7 @@ export class ScraperService {
             const pdfBuffer = Buffer.from(formResult.bytes);
             const fileName = `${targetFileId || idArchivoFromDatos}_resolucion.pdf`;
             const filePath = path.join(uploadDir, fileName);
-            fs.writeFileSync(filePath, pdfBuffer);
+            await fs.promises.writeFile(filePath, pdfBuffer);
             const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
             const pdfRuta = `${backendUrl}/uploads/${fileName}`;
             this.logger.log(`✅ ¡ÉXITO! PDF de resolución guardado vía Form POST (${pdfBuffer.length} bytes): ${fileName}`);
@@ -1627,8 +1562,8 @@ export class ScraperService {
           } else {
             // Último fallback: bajarArchivo con el primer ID del DOM
             const fallbackId = allBajarIds.find(
-              (id) => id !== constanciaId && id !== empresa.ruc && id !== targetFileId,
-            ) || allBajarIds.find((id) => id !== empresa.ruc) || constanciaId;
+              (id: string) => id !== constanciaId && id !== empresa.ruc && id !== targetFileId,
+            ) || allBajarIds.find((id: string) => id !== empresa.ruc) || constanciaId;
             resolvedFileId = fallbackId;
             downloadUrl = `https://ww1.sunat.gob.pe/ol-ti-itvisornoti/visor/bajarArchivo/${fallbackId}/0/0/${empresa.ruc}`;
           }
@@ -1642,8 +1577,8 @@ export class ScraperService {
       } else {
         // No se capturó ninguna URL: fallback a bajarArchivo
         const fallbackId = allBajarIds.find(
-          (id) => id !== constanciaId && id !== empresa.ruc && id !== targetFileId,
-        ) || allBajarIds.find((id) => id !== empresa.ruc) || constanciaId;
+          (id: string) => id !== constanciaId && id !== empresa.ruc && id !== targetFileId,
+        ) || allBajarIds.find((id: string) => id !== empresa.ruc) || constanciaId;
         resolvedFileId = fallbackId;
         downloadUrl = `https://ww1.sunat.gob.pe/ol-ti-itvisornoti/visor/bajarArchivo/${fallbackId}/0/0/${empresa.ruc}`;
       }
@@ -1656,7 +1591,7 @@ export class ScraperService {
       for (let attempt = 1; attempt <= 5; attempt++) {
         try {
           this.logger.log(`🔄 Intento ${attempt}/5 de descarga del PDF...`);
-          const base64Data = await visorFrame.evaluate(async (url) => {
+          const base64Data = await visorFrame.evaluate(async (url: string) => {
             try {
               const response = await fetch(url, { credentials: 'include' });
               if (!response.ok) return `ERR:${response.status}`;
@@ -1693,7 +1628,7 @@ export class ScraperService {
         const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
         const realHref = `${backendUrl}/uploads/${realFileName}`;
 
-        fs.writeFileSync(realFilePath, pdfBuffer);
+        await fs.promises.writeFile(realFilePath, pdfBuffer);
 
         // Actualizar la notificación. Si el fileId ya existe en otra fila (unique constraint),
         // actualizar solo la ruta y el estado sin cambiar el fileId.
@@ -1717,8 +1652,11 @@ export class ScraperService {
         this.logger.log(`✅ PDF recuperado exitosamente: ${realFileName}`);
         return { success: true, rutaArchivoPdf: realHref };
       } else {
-        throw new Error('SUNAT no entregó el PDF tras 5 reintentos. Puede ser un comunicado sin adjunto.');
+        return { success: false, message: 'SUNAT no entregó el PDF tras varios reintentos. El documento puede no tener adjunto o estar caducado en SUNAT.' };
       }
+    } catch (err: any) {
+      this.logger.error(`Error en retryPdf: ${err.message}`);
+      return { success: false, message: `Error al conectar con SUNAT: ${err.message}` };
     } finally {
       if (browser) await browser.close();
     }

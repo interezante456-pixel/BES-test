@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { PdfParserService } from '../scraper/pdf-parser.service';
+import { EmpresaAccessService } from '../common/empresa-access.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -17,15 +18,13 @@ export class NotificacionesService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private pdfParserService: PdfParserService,
+    private empresaAccessService: EmpresaAccessService,
   ) {}
 
   async onModuleInit() {
-    // Escaneo y retro-extracción automática de información financiera en PDFs existentes
-    setTimeout(() => {
-      this.backfillPdfData().catch((err) =>
-        this.logger.error(`Error en backfill de PDFs: ${err?.message || err}`),
-      );
-    }, 3000);
+    // B8: El backfill automático al inicio fue eliminado para no sobrecargar el startup.
+    // Puede ejecutarse manualmente desde el endpoint: POST /notificaciones/backfill
+    // o periódicamente via un cron job en cron.service.ts si se requiere.
   }
 
   async backfillPdfData() {
@@ -75,52 +74,73 @@ export class NotificacionesService implements OnModuleInit {
     usuarioId: string,
     rol: string,
   ): Promise<string[]> {
-    if (rol === 'SUPER_ADMIN' || rol === 'ADMIN') {
-      const empresas = await this.prisma.empresa.findMany({
-        select: { id: true },
-      });
-      return empresas.map((e) => e.id);
-    }
-    const asignaciones = await this.prisma.empresaAsignacion.findMany({
-      where: { usuarioId },
-      select: { empresaId: true },
-    });
-    return asignaciones.map((a) => a.empresaId);
+    return this.empresaAccessService.getEmpresaIds(usuarioId, rol);
   }
 
   /** BANDEJA: notificaciones que este usuario AÚN NO ha leído */
-  async findBandejaByUser(usuarioId: string, rol: string) {
+  async findBandejaByUser(usuarioId: string, rol: string, filters: any = {}) {
     const empresaIds = await this.getEmpresaIds(usuarioId, rol);
-    if (empresaIds.length === 0) return [];
+    if (empresaIds.length === 0) return { data: [], meta: { total: 0, page: 1, lastPage: 1 } };
 
-    return this.prisma.notificacion.findMany({
-      where: {
-        empresaId: { in: empresaIds },
-        lecturas: { none: { usuarioId } },
-      },
-      include: {
-        empresa: { select: { id: true, razonSocial: true, ruc: true } },
-      },
-      orderBy: { fechaMensaje: 'desc' },
-    });
+    return this.buildPaginatedQuery(empresaIds, { none: { usuarioId } }, filters);
   }
 
   /** ARCHIVO: notificaciones que este usuario YA leyó */
-  async findArchivoByUser(usuarioId: string, rol: string) {
+  async findArchivoByUser(usuarioId: string, rol: string, filters: any = {}) {
     const empresaIds = await this.getEmpresaIds(usuarioId, rol);
-    if (empresaIds.length === 0) return [];
+    if (empresaIds.length === 0) return { data: [], meta: { total: 0, page: 1, lastPage: 1 } };
 
-    return this.prisma.notificacion.findMany({
-      where: {
-        empresaId: { in: empresaIds },
-        lecturas: { some: { usuarioId } },
-      },
-      include: {
-        empresa: { select: { id: true, razonSocial: true, ruc: true } },
-      },
-      orderBy: { fechaMensaje: 'desc' },
-    });
+    return this.buildPaginatedQuery(empresaIds, { some: { usuarioId } }, filters);
   }
+
+  private async buildPaginatedQuery(empresaIds: string[], lecturasCondition: any, filters: any) {
+    const { page = 1, limit = 50, empresa, search, startDate, endDate } = filters;
+    const skip = (page - 1) * limit;
+
+    const whereParams: any = {
+      empresaId: { in: empresaIds },
+      lecturas: lecturasCondition,
+    };
+
+    if (empresa) {
+      whereParams.empresaId = empresa;
+    }
+
+    if (search) {
+      whereParams.OR = [
+        { asunto: { contains: search, mode: 'insensitive' } },
+        { empresa: { razonSocial: { contains: search, mode: 'insensitive' } } },
+        { empresa: { ruc: { contains: search } } },
+      ];
+    }
+
+    if (startDate || endDate) {
+      whereParams.fechaMensaje = {};
+      if (startDate) whereParams.fechaMensaje.gte = new Date(`${startDate}T00:00:00.000Z`);
+      if (endDate) whereParams.fechaMensaje.lte = new Date(`${endDate}T23:59:59.999Z`);
+    }
+
+    const [total, data] = await Promise.all([
+      this.prisma.notificacion.count({ where: whereParams }),
+      this.prisma.notificacion.findMany({
+        where: whereParams,
+        include: { empresa: { select: { id: true, razonSocial: true, ruc: true } } },
+        orderBy: { fechaMensaje: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
 
   /** Marca una notificación como leída SOLO para este usuario */
   async markAsRead(notificacionId: string, usuarioId: string) {

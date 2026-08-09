@@ -8,6 +8,7 @@ import {
   Delete,
   Post,
   Body,
+  Query,
 } from '@nestjs/common';
 import { NotificacionesService } from './notificaciones.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -19,19 +20,51 @@ export class NotificacionesController {
 
   /** Bandeja de entrada — notificaciones sin leer para este usuario */
   @Get()
-  findBandeja(@Request() req: any) {
+  findBandeja(
+    @Request() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('empresa') empresa?: string,
+    @Query('search') search?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
     return this.notificacionesService.findBandejaByUser(
       req.user.id,
       req.user.rol,
+      {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 50,
+        empresa,
+        search,
+        startDate,
+        endDate,
+      },
     );
   }
 
   /** Archivo — notificaciones ya leídas por este usuario */
   @Get('archivo')
-  findArchivo(@Request() req: any) {
+  findArchivo(
+    @Request() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('empresa') empresa?: string,
+    @Query('search') search?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
     return this.notificacionesService.findArchivoByUser(
       req.user.id,
       req.user.rol,
+      {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 50,
+        empresa,
+        search,
+        startDate,
+        endDate,
+      },
     );
   }
 

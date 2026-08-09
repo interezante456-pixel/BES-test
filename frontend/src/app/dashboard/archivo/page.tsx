@@ -9,6 +9,8 @@ import { PdfViewerDrawer } from '../components/PdfViewerDrawer';
 
 function ArchivoContent() {
   const [notificaciones, setNotificaciones] = useState<any[]>([]);
+  const [meta, setMeta] = useState({ total: 0, page: 1, lastPage: 1 });
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedNotificacionForPdf, setSelectedNotificacionForPdf] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,19 +25,35 @@ function ArchivoContent() {
   const canDelete = user?.rol === 'SUPER_ADMIN' || user?.rol === 'ADMIN';
 
   const fetchNotificaciones = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/notificaciones/archivo');
-      setNotificaciones(res.data);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '50',
+      });
+      if (searchTerm) params.append('search', searchTerm);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const res = await api.get(`/notificaciones/archivo?${params.toString()}`);
+      setNotificaciones(res.data.data);
+      setMeta(res.data.meta);
+      setSelectedIds([]); // Clear selection on page/filter change
     } catch (error) {
       console.error("Error loading notifications", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, searchTerm, startDate, endDate]);
 
   useEffect(() => {
     if (isAuthenticated) fetchNotificaciones();
   }, [isAuthenticated, fetchNotificaciones]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, startDate, endDate]);
 
   const getPdfUrl = (ruta: string | null | undefined): string | null => {
     if (!ruta) return null;
@@ -70,26 +88,8 @@ function ArchivoContent() {
     }
   };
 
-  const filteredData = notificaciones.filter(notif => {
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      const matchesText = notif.empresa.ruc.includes(term) ||
-        notif.empresa.razonSocial.toLowerCase().includes(term) ||
-        notif.asunto.toLowerCase().includes(term);
-      if (!matchesText) return false;
-    }
-    if (startDate) {
-      const start = new Date(startDate + 'T00:00:00');
-      const notifDate = new Date(notif.fechaMensaje);
-      if (notifDate < start) return false;
-    }
-    if (endDate) {
-      const end = new Date(endDate + 'T23:59:59');
-      const notifDate = new Date(notif.fechaMensaje);
-      if (notifDate > end) return false;
-    }
-    return true;
-  });
+  // Client-side filtering is no longer needed, the server handles it.
+  const filteredData = notificaciones;
 
   const allFilteredSelected = filteredData.length > 0 && filteredData.every(n => selectedIds.includes(n.id));
 
@@ -120,7 +120,7 @@ function ArchivoContent() {
           <p className="text-gray-400 text-sm mt-1">Historial de todas las notificaciones procesadas y leídas.</p>
         </div>
         <span className="text-xs font-semibold text-gray-500 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
-          {notificaciones.length} registros en total
+          {meta.total} registros en total
         </span>
       </div>
 
@@ -356,6 +356,32 @@ function ArchivoContent() {
               );
             })}
           </div>
+
+          {/* Pagination Controls */}
+          {meta.lastPage > 1 && (
+            <div className="p-4 border-t border-white/5 flex items-center justify-between bg-white/[0.02]">
+              <div className="text-sm text-gray-400">
+                Mostrando página <span className="text-white font-medium">{meta.page}</span> de <span className="text-white font-medium">{meta.lastPage}</span>
+                {' '}({meta.total} notificaciones)
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={meta.page <= 1}
+                  className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(meta.lastPage, p + 1))}
+                  disabled={meta.page >= meta.lastPage}
+                  className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

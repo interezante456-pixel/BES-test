@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: bes_postgres
+    container_name: oracon_postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -11,21 +11,33 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    # C7: Health check para que backend espere a que postgres esté listo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: bes_redis
+    container_name: oracon_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    # C7: Health check para Redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: bes_backend
+    container_name: oracon_backend
     env_file:
       - ./backend/.env
     environment:
@@ -34,34 +46,44 @@ services:
       - REDIS_PORT=6379
       - PUPPETEER_HEADLESS=true
       - PORT=3000
-      - BACKEND_URL=http://panel.bes.com
+      - BACKEND_URL=http://panel.oracon.com
     ports:
       - "4000:3000"
     volumes:
       - ./backend/uploads:/app/uploads
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
+    # C7: Health check del backend usando Node.js fetch nativo contra /health
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://panel.bes.com
+        - NEXT_PUBLIC_API_URL=http://panel.oracon.com
     environment:
       - INTERNAL_API_URL=http://backend:3000
-    container_name: bes_frontend
+    container_name: oracon_frontend
     ports:
       - "3500:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
   nginx:
     image: nginx:alpine
-    container_name: bes_nginx
+    container_name: oracon_nginx
     ports:
       - "80:80"
     volumes:
@@ -74,3 +96,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+

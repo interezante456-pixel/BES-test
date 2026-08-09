@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Mail, Lock, LogIn, Activity } from 'lucide-react';
+import { Mail, Lock, LogIn } from 'lucide-react';
+import { OraconLogo } from '@/components/OraconLogo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -44,18 +45,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0f1c] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Decorative background elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
+    <div className="min-h-screen bg-[#090d16] flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Decorative background elements in Oracon Orange */}
+      <div className="absolute top-[-10%] left-[-10%] w-[45%] h-[45%] rounded-full bg-orange-600/15 blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] rounded-full bg-orange-500/10 blur-[140px] pointer-events-none" />
 
-      <div className="w-full max-w-md bg-[#111827]/80 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl z-10">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 mb-6 shadow-lg shadow-blue-500/30">
-            <Activity className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Bienvenido a BES</h1>
-          <p className="text-gray-400 font-medium">Buzón Electrónico SUNAT</p>
+      <div className="w-full max-w-md bg-[#111827]/90 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl z-10">
+        <div className="text-center mb-8 flex flex-col items-center">
+          <OraconLogo size="lg" className="mb-4" />
+          <p className="text-gray-400 font-medium text-sm">Monitoreo de Buzón Electrónico SUNAT</p>
         </div>
 
         {error && (
@@ -76,8 +74,8 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="block w-full pl-12 pr-4 py-3.5 bg-[#1f2937]/50 border border-white/5 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 outline-none"
-                placeholder="usuario@estudio.com"
+                className="block w-full pl-12 pr-4 py-3.5 bg-[#1f2937]/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200 outline-none"
+                placeholder="admin@oracon.com"
               />
             </div>
           </div>
@@ -93,7 +91,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="block w-full pl-12 pr-4 py-3.5 bg-[#1f2937]/50 border border-white/5 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 outline-none"
+                className="block w-full pl-12 pr-4 py-3.5 bg-[#1f2937]/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200 outline-none"
                 placeholder="••••••••"
               />
             </div>
@@ -102,7 +100,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 mt-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold text-[15px] shadow-lg shadow-blue-500/25 transform transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+            className="w-full py-4 mt-8 bg-gradient-to-r from-orange-600 via-[#FF5500] to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white rounded-xl font-bold text-[15px] shadow-lg shadow-orange-500/25 transform transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
           >
             {loading ? (
               <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />

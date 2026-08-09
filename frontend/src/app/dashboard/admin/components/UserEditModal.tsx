@@ -42,15 +42,15 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
         .replace(/[^a-zA-Z0-9]/g, '')
         .toLowerCase();
 
-    const firstName = form.nombres.trim().split(/\s+/)[0] || '';
-    const firstSurname = form.apellidos.trim().split(/\s+/)[0] || '';
+    // Iniciales de TODOS los nombres + iniciales de TODOS los apellidos
+    const initNombres = form.nombres.trim().split(/\s+/)
+      .map(w => cleanStr(w).charAt(0)).join('');
+    const initApellidos = form.apellidos.trim().split(/\s+/)
+      .map(w => cleanStr(w).charAt(0)).join('');
     const cleanDni = form.dni.trim().replace(/\D/g, '');
 
-    const initFirstName = cleanStr(firstName).charAt(0);
-    const initSurname = cleanStr(firstSurname).charAt(0);
-
-    if (!initFirstName && !initSurname && !cleanDni) return user?.email || 'Se autogenerará...';
-    return `${initFirstName}${initSurname}${cleanDni}@bes.com`;
+    if (!initNombres && !initApellidos && !cleanDni) return user?.email || 'Se autogenerará...';
+    return `${initNombres}${initApellidos}${cleanDni}@oracon.com`;
   };
 
   if (!isOpen || !user) return null;

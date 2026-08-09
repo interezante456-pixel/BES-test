@@ -1,20 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { isUrgentAsunto } from '../common/notificacion-classifier';
 
 @Injectable()
 export class EstadisticasService {
   constructor(private prisma: PrismaService) {}
 
-  private isUrgentAsunto(asunto: string): boolean {
-    const a = asunto.toLowerCase();
-    return (
-      a.includes('orden de pago') ||
-      a.includes('coactiv') ||
-      a.includes('esquela') ||
-      a.includes('embargo') ||
-      a.includes('conclusi')
-    );
-  }
+  // isUrgentAsunto migrado al helper compartido: src/common/notificacion-classifier.ts
 
   async getStats(usuarioId: string, userRol: string) {
     let empresaIds: string[];
@@ -77,7 +69,7 @@ export class EstadisticasService {
     let totalNormales = 0;
 
     for (const n of notificacionesAll) {
-      if (this.isUrgentAsunto(n.asunto)) {
+      if (isUrgentAsunto(n.asunto)) {
         totalPeligrosas++;
       } else {
         totalNormales++;
@@ -129,7 +121,7 @@ export class EstadisticasService {
       let normales = 0;
 
       for (const nd of notifsDia) {
-        if (this.isUrgentAsunto(nd.asunto)) peligrosas++;
+        if (isUrgentAsunto(nd.asunto)) peligrosas++;
         else normales++;
       }
 
@@ -158,7 +150,7 @@ export class EstadisticasService {
 
       const item = mapMeses.get(mesKey)!;
       item.cantidad++;
-      if (this.isUrgentAsunto(n.asunto)) {
+      if (isUrgentAsunto(n.asunto)) {
         item.peligrosas++;
       } else {
         item.normales++;

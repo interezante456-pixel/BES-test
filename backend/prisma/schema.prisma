@@ -72,7 +72,13 @@ model Notificacion {
   
   empresa            Empresa               @relation(fields: [empresaId], references: [id])
   lecturas           NotificacionLectura[]
+
+  // B4: Índices compuestos para acelerar queries frecuentes del dashboard y bandeja
+  @@index([empresaId, fechaMensaje])
+  @@index([empresaId, estado])
+  @@index([createdAt])
 }
+
 
 /// Tabla de lecturas por usuario — cada fila = "este usuario leyó esta notificación"
 model NotificacionLectura {

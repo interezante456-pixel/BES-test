@@ -74,10 +74,10 @@ export const CompanyDirectoryList: React.FC<CompanyDirectoryListProps> = ({
                       className="flex items-center gap-2 bg-[#1f2937] border border-white/10 px-3 py-1.5 rounded-lg group"
                     >
                       <div className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px] font-bold">
-                        {asig.usuario.nombre.charAt(0).toUpperCase()}
+                        {(asig.usuario.nombres || asig.usuario.nombre || '?').charAt(0).toUpperCase()}
                       </div>
                       <span className="text-sm text-gray-300 font-medium">
-                        {asig.usuario.nombre}
+                        {`${asig.usuario.nombres || asig.usuario.nombre || ''} ${asig.usuario.apellidos || ''}`.trim()}
                       </span>
                       <button
                         onClick={() => onRevokeUser(empresa.id, asig.usuario.id)}

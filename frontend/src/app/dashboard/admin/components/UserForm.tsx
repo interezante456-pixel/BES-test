@@ -21,15 +21,15 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
         .replace(/[^a-zA-Z0-9]/g, '')
         .toLowerCase();
 
-    const firstName = newUser.nombres.trim().split(/\s+/)[0] || '';
-    const firstSurname = newUser.apellidos.trim().split(/\s+/)[0] || '';
+    // Iniciales de TODOS los nombres + iniciales de TODOS los apellidos
+    const initNombres = newUser.nombres.trim().split(/\s+/)
+      .map(w => cleanStr(w).charAt(0)).join('');
+    const initApellidos = newUser.apellidos.trim().split(/\s+/)
+      .map(w => cleanStr(w).charAt(0)).join('');
     const cleanDni = newUser.dni.trim().replace(/\D/g, '');
 
-    const initFirstName = cleanStr(firstName).charAt(0);
-    const initSurname = cleanStr(firstSurname).charAt(0);
-
-    if (!initFirstName && !initSurname && !cleanDni) return 'Se autogenerará al escribir...';
-    return `${initFirstName}${initSurname}${cleanDni}@bes.com`;
+    if (!initNombres && !initApellidos && !cleanDni) return 'Se autogenerará al escribir...';
+    return `${initNombres}${initApellidos}${cleanDni}@oracon.com`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

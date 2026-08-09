@@ -10,6 +10,8 @@ import { Building2, Bell, LogOut, Settings, Shield, ShieldCheck, Archive, Mail, 
 import { getSocket } from '@/lib/socket';
 import { UserProfileModal } from './components/UserProfileModal';
 
+import { OraconLogo } from '@/components/OraconLogo';
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, logout } = useAuthStore();
   const router = useRouter();
@@ -104,7 +106,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     exact ? pathname === href : pathname.startsWith(href);
 
   return (
-    <div className="min-h-screen bg-[#0a0f1c] flex flex-col md:flex-row relative">
+    <div className="min-h-screen bg-[#090d16] flex flex-col md:flex-row relative">
       {/* Backdrop para móvil */}
       {isMobileMenuOpen && (
         <div
@@ -121,12 +123,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       >
         <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
           <div className="flex items-center">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-3 shadow-lg shadow-blue-500/20 flex-shrink-0">
-              <Building2 className="text-white w-5 h-5" />
-            </div>
+            <OraconLogo size="sm" showSubtitle={false} className="mr-3" />
             <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">BES Panel</h1>
-              <p className="text-xs text-blue-400 font-medium">{user?.rol || 'Administrador'}</p>
+              <h1 className="text-lg font-bold text-white tracking-tight leading-none">ORACON</h1>
+              <p className="text-[10px] text-orange-400 font-medium tracking-wide">ESTUDIO CONTABLE</p>
             </div>
           </div>
           {/* Botón cerrar para móvil */}
@@ -146,7 +146,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               onClick={() => setIsMobileMenuOpen(false)}
               className={`flex items-center gap-4 px-4 py-3.5 rounded-xl font-semibold transition-colors ${
                 isActive(item.href, item.exact)
-                  ? 'bg-blue-500/10 text-blue-400 border border-blue-500/10'
+                  ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-sm shadow-orange-500/5'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -167,7 +167,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center gap-4 px-4 py-3.5 rounded-xl font-semibold transition-colors ${
                   pathname === '/dashboard/admin'
-                    ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/10'
+                    ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-sm shadow-orange-500/5'
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
                 }`}
               >
@@ -180,7 +180,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center gap-4 px-4 py-3.5 rounded-xl font-semibold transition-colors ${
                   isActive('/dashboard/admin/auditoria')
-                    ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/10'
+                    ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-sm shadow-orange-500/5'
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
                 }`}
               >
@@ -195,7 +195,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             onClick={() => setIsMobileMenuOpen(false)}
             className={`flex items-center gap-4 px-4 py-3.5 rounded-xl font-semibold transition-colors ${
               isActive('/dashboard/configuracion')
-                ? 'bg-blue-500/10 text-blue-400 border border-blue-500/10'
+                ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-sm shadow-orange-500/5'
                 : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
