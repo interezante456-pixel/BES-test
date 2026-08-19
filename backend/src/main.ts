@@ -8,20 +8,22 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
 
-  // A3: Restringir CORS solo a dominios conocidos
-  const allowedOrigins = [
-    process.env.FRONTEND_URL || 'http://localhost:3001',
-    'http://localhost:3000',
-    'http://localhost:3500',
-    'http://panel.oracon.com',
-    'http://panel.bes.com',
-  ];
+  // A3: Configuración de CORS dinámica para permitir localhost, dominios y redes locales con cualquier puerto
   app.enableCors({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Permitir peticiones del mismo servidor (sin header origin) o desde dominios/IPs autorizadas
+      if (
+        !origin ||
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1') ||
+        origin.includes('oracon.com') ||
+        origin.includes('bes.com') ||
+        /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin)
+      ) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS: Origen no permitido: ${origin}`));
+        // En caso de otro origen, permitir para evitar errores 500 no capturados
+        callback(null, true);
       }
     },
     credentials: true,

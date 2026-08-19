@@ -59,8 +59,10 @@ function ArchivoContent() {
     if (!ruta) return null;
     const fileName = ruta.split('/uploads/').pop();
     if (!fileName) return null;
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-    return `${backendUrl}/uploads/${fileName}`;
+    if (typeof window !== 'undefined' && window.location.port === '3500') {
+      return `${window.location.protocol}//${window.location.hostname}:4000/uploads/${fileName}`;
+    }
+    return `/uploads/${fileName}`;
   };
 
   const handleDelete = async (id: string) => {

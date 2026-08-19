@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -15,14 +16,22 @@ export function generateAutoEmail(nombres: string, apellidos: string, dni: strin
       .replace(/[^a-zA-Z0-9]/g, '')
       .toLowerCase();
 
-  const firstName = nombres.trim().split(/\s+/)[0] || '';
-  const firstSurname = apellidos.trim().split(/\s+/)[0] || '';
-  const cleanDni = dni.trim().replace(/\D/g, '');
+  // Iniciales de TODOS los nombres + iniciales de TODOS los apellidos + DNI
+  const initNombres = (nombres || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => cleanStr(w).charAt(0))
+    .join('');
+  const initApellidos = (apellidos || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => cleanStr(w).charAt(0))
+    .join('');
+  const cleanDni = (dni || '').trim().replace(/\D/g, '');
 
-  const initFirstName = cleanStr(firstName).charAt(0);
-  const initSurname = cleanStr(firstSurname).charAt(0);
-
-  return `${initFirstName}${initSurname}${cleanDni}@bes.com`;
+  return `${initNombres}${initApellidos}${cleanDni}@oracon.com`;
 }
 
 @Injectable()
@@ -97,7 +106,20 @@ export class UsuariosService {
       );
     }
 
-    const cleanDni = data.dni.trim();
+    if (!data.nombres || !data.nombres.trim()) {
+      throw new BadRequestException('Los nombres son obligatorios');
+    }
+    if (!data.apellidos || !data.apellidos.trim()) {
+      throw new BadRequestException('Los apellidos son obligatorios');
+    }
+    const cleanDni = (data.dni || '').trim().replace(/\D/g, '');
+    if (cleanDni.length !== 8) {
+      throw new BadRequestException('El DNI debe tener exactamente 8 dígitos');
+    }
+    if (!data.password || !data.password.trim()) {
+      throw new BadRequestException('La contraseña es obligatoria');
+    }
+
     const dniExists = await this.prisma.usuario.findUnique({
       where: { dni: cleanDni },
     });
@@ -155,7 +177,13 @@ export class UsuariosService {
     const updateData: any = {};
     if (data.nombres !== undefined) updateData.nombres = data.nombres.trim();
     if (data.apellidos !== undefined) updateData.apellidos = data.apellidos.trim();
-    if (data.dni !== undefined) updateData.dni = data.dni.trim();
+    if (data.dni !== undefined) {
+      const cleanDni = data.dni.trim().replace(/\D/g, '');
+      if (cleanDni.length !== 8) {
+        throw new BadRequestException('El DNI debe tener exactamente 8 dígitos');
+      }
+      updateData.dni = cleanDni;
+    }
     if (data.rol !== undefined) updateData.rol = data.rol;
     if (data.telegramChatId !== undefined)
       updateData.telegramChatId = data.telegramChatId ? data.telegramChatId.trim() : null;

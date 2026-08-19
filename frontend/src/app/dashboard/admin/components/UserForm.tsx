@@ -38,9 +38,11 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
       alert('El DNI debe contener exactamente 8 dígitos.');
       return;
     }
+    const emailPreview = getAutoEmailPreview();
     setLoading(true);
     try {
       await onSubmit(newUser);
+      alert(`✅ Usuario creado con éxito.\n\n📧 Correo asignado: ${emailPreview}\n🔑 Contraseña: (la ingresada)`);
       setNewUser(EMPTY_USER);
       onCancel();
     } catch (err: any) {

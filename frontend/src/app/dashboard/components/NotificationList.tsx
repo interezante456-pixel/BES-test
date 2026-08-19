@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, MailOpen, Clock, FileText, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
+import api from '@/lib/api';
 
 interface NotificationListProps {
   notifications: any[];
@@ -22,20 +23,10 @@ export const NotificationList: React.FC<NotificationListProps> = ({
     e.stopPropagation();
     setRetrying((prev) => ({ ...prev, [notifId]: true }));
     try {
-      const token = localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const res = await fetch(`${apiUrl}/scraper/retry-pdf/${notifId}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        onRefresh?.();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        alert(data?.message || 'No se pudo recuperar el PDF. Inténtalo más tarde.');
-      }
-    } catch {
-      alert('Error de conexión al reintentar el PDF.');
+      await api.post(`/scraper/retry-pdf/${notifId}`);
+      onRefresh?.();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'No se pudo recuperar el PDF. Inténtalo más tarde.');
     } finally {
       setRetrying((prev) => ({ ...prev, [notifId]: false }));
     }
