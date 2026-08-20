@@ -22,6 +22,9 @@ import {
   HardDrive,
   Mail,
   Sparkles,
+  CheckCircle2,
+  CircleDashed,
+  Save,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -67,6 +70,7 @@ export default function ConfiguracionPage() {
   const [scheduleSuccess, setScheduleSuccess] = useState<string | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
+  // Form state
   const [sincroActiva, setSincroActiva] = useState(true);
   const [diasSeleccionados, setDiasSeleccionados] = useState<number[]>([
     0, 1, 2, 3, 4, 5, 6,
@@ -77,8 +81,15 @@ export default function ConfiguracionPage() {
   ]);
   const [nuevaHora, setNuevaHora] = useState('12:00');
 
+  // Guardado original en el servidor para detectar cambios
+  const [lastSaved, setLastSaved] = useState<{
+    sincroActiva: boolean;
+    dias: number[];
+    horas: string[];
+    updatedAt?: string;
+  } | null>(null);
+
   useEffect(() => {
-    // Si no es admin, forzar pestaña de notificaciones
     if (user && !isAdmin) {
       setActiveTab('notifications');
     }
@@ -103,9 +114,19 @@ export default function ConfiguracionPage() {
     try {
       const res = await api.get('/scraper/schedule');
       if (res.data) {
-        setSincroActiva(res.data.sincroAutomaticaActiva ?? true);
-        setDiasSeleccionados(res.data.diasSemana || [0, 1, 2, 3, 4, 5, 6]);
-        setHorasProgramadas(res.data.horas || ['06:00', '18:00']);
+        const activa = res.data.sincroAutomaticaActiva ?? true;
+        const dias = res.data.diasSemana || [0, 1, 2, 3, 4, 5, 6];
+        const horas = res.data.horas || ['06:00', '18:00'];
+        
+        setSincroActiva(activa);
+        setDiasSeleccionados(dias);
+        setHorasProgramadas(horas);
+        setLastSaved({
+          sincroActiva: activa,
+          dias: [...dias].sort((a, b) => a - b),
+          horas: [...horas].sort(),
+          updatedAt: res.data.updatedAt,
+        });
       }
     } catch (err: any) {
       console.error('Error fetching schedule config:', err);
@@ -114,6 +135,16 @@ export default function ConfiguracionPage() {
       setScheduleLoading(false);
     }
   };
+
+  // Comparar si hay cambios pendientes
+  const hasUnsavedChanges = Boolean(
+    lastSaved &&
+      (sincroActiva !== lastSaved.sincroActiva ||
+        JSON.stringify([...diasSeleccionados].sort((a, b) => a - b)) !==
+          JSON.stringify(lastSaved.dias) ||
+        JSON.stringify([...horasProgramadas].sort()) !==
+          JSON.stringify(lastSaved.horas))
+  );
 
   const handleSaveSchedule = async () => {
     if (horasProgramadas.length === 0) {
@@ -136,17 +167,35 @@ export default function ConfiguracionPage() {
         horas: horasProgramadas,
       });
 
-      setScheduleSuccess('¡Programación guardada y aplicada correctamente!');
       if (res.data) {
-        setSincroActiva(res.data.sincroAutomaticaActiva);
-        setDiasSeleccionados(res.data.diasSemana);
-        setHorasProgramadas(res.data.horas);
+        const activa = res.data.sincroAutomaticaActiva;
+        const dias = res.data.diasSemana;
+        const horas = res.data.horas;
+
+        setSincroActiva(activa);
+        setDiasSeleccionados(dias);
+        setHorasProgramadas(horas);
+        setLastSaved({
+          sincroActiva: activa,
+          dias: [...dias].sort((a, b) => a - b),
+          horas: [...horas].sort(),
+          updatedAt: new Date().toISOString(),
+        });
       }
-      setTimeout(() => setScheduleSuccess(null), 5000);
+
+      const nombresDias = diasSeleccionados
+        .map((k) => DIAS_MAP.find((d) => d.key === k)?.label)
+        .filter(Boolean)
+        .join(', ');
+
+      setScheduleSuccess(
+        `✓ ¡Programación guardada en el servidor! Días activos: [${nombresDias}] a las [${horasProgramadas.map(formatHora12).join(', ')}].`
+      );
+      setTimeout(() => setScheduleSuccess(null), 7000);
     } catch (err: any) {
       console.error('Error saving schedule:', err);
       setScheduleError(
-        err.response?.data?.message || 'Error al guardar la programación.',
+        err.response?.data?.message || 'Error al guardar la programación en el servidor.',
       );
     } finally {
       setSavingSchedule(false);
@@ -247,6 +296,9 @@ export default function ConfiguracionPage() {
             >
               <Clock className="w-4 h-4 text-indigo-400" />
               <span>Sincronización Automática</span>
+              {hasUnsavedChanges && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title="Cambios pendientes" />
+              )}
             </button>
 
             {/* Tab 2: Control de Tareas */}
@@ -308,9 +360,20 @@ export default function ConfiguracionPage() {
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                   SUNAT
                 </span>
+                
+                {/* Badge de estado en tiempo real */}
+                {hasUnsavedChanges ? (
+                  <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 animate-pulse">
+                    ⚠️ Cambios sin guardar
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <CheckCircle2 className="w-3 h-3" /> Servidor sincronizado
+                  </span>
+                )}
               </div>
               <p className="text-gray-400 text-xs sm:text-sm mt-1.5">
-                Define los días y los horarios exactos en que el robot revisará automáticamente las casillas electrónicas.
+                Selecciona los días activos haciendo clic sobre ellos y pulsa <strong>Guardar Programación</strong> para persistirlos.
               </p>
             </div>
 
@@ -341,7 +404,7 @@ export default function ConfiguracionPage() {
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-gray-300 flex items-center gap-2 uppercase tracking-wider">
                     <Calendar className="w-4 h-4 text-indigo-400" />
-                    Días de Ejecución
+                    Días de Ejecución ({diasSeleccionados.length} activos)
                   </label>
                   <div className="flex items-center gap-3">
                     <button
@@ -362,6 +425,7 @@ export default function ConfiguracionPage() {
                   </div>
                 </div>
 
+                {/* Grid de Días con Alto Contraste */}
                 <div className="grid grid-cols-7 gap-2.5 sm:gap-3">
                   {DIAS_MAP.map((dia) => {
                     const selected = diasSeleccionados.includes(dia.key);
@@ -370,15 +434,41 @@ export default function ConfiguracionPage() {
                         key={dia.key}
                         type="button"
                         onClick={() => toggleDia(dia.key)}
-                        className={`flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl border transition-all ${
+                        className={`flex flex-col items-center justify-center py-4 px-2 rounded-2xl border transition-all relative overflow-hidden group ${
                           selected
-                            ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-200 shadow-md shadow-indigo-600/10 ring-1 ring-indigo-500/30'
-                            : 'bg-white/[0.02] border-white/5 text-gray-500 hover:text-gray-300 hover:border-white/10'
+                            ? 'bg-gradient-to-b from-indigo-600 to-indigo-700 border-indigo-400 text-white shadow-lg shadow-indigo-600/30 ring-2 ring-indigo-400/40 scale-[1.02]'
+                            : 'bg-white/[0.02] border-white/10 text-gray-400 hover:text-gray-200 hover:border-white/20 hover:bg-white/[0.04]'
                         }`}
                       >
-                        <span className="text-sm font-bold">{dia.label}</span>
-                        <span className="text-[10px] text-gray-400 mt-1 hidden sm:block">
+                        {/* Indicador Check o Cruz */}
+                        <div className="flex items-center gap-1 mb-1">
+                          {selected ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-300 font-bold" />
+                          ) : (
+                            <CircleDashed className="w-3.5 h-3.5 text-gray-600 group-hover:text-gray-400" />
+                          )}
+                          <span className="text-sm font-black tracking-wide">
+                            {dia.label}
+                          </span>
+                        </div>
+
+                        <span
+                          className={`text-[10px] font-semibold mt-0.5 hidden sm:block ${
+                            selected ? 'text-indigo-100' : 'text-gray-400'
+                          }`}
+                        >
                           {dia.nombre}
+                        </span>
+
+                        {/* Badge de estado dentro del botón */}
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1.5 ${
+                            selected
+                              ? 'bg-white/20 text-white'
+                              : 'bg-white/5 text-gray-400'
+                          }`}
+                        >
+                          {selected ? 'ACTIVO' : 'INACTIVO'}
                         </span>
                       </button>
                     );
@@ -448,52 +538,97 @@ export default function ConfiguracionPage() {
               </div>
 
               {/* Resumen dinámico en Card */}
-              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between">
-                <div className="text-xs sm:text-sm text-gray-300">
-                  <span className="font-bold text-white">Resumen: </span>
-                  {sincroActiva ? (
-                    <>
-                      El robot sincronizará{' '}
-                      <strong className="text-indigo-400 font-bold">
-                        {horasProgramadas.length}{' '}
-                        {horasProgramadas.length === 1 ? 'vez' : 'veces'} al día
-                      </strong>{' '}
-                      en {diasSeleccionados.length} días de la semana (
-                      {horasProgramadas.map(formatHora12).join(', ')}).
-                    </>
-                  ) : (
-                    <span className="text-amber-400 font-semibold">
-                      La sincronización automática está pausada temporalmente.
-                    </span>
-                  )}
+              <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="text-xs sm:text-sm text-gray-300">
+                    <span className="font-bold text-white">Configuración Seleccionada: </span>
+                    {sincroActiva ? (
+                      <>
+                        <strong className="text-indigo-400 font-bold">
+                          {horasProgramadas.length}{' '}
+                          {horasProgramadas.length === 1 ? 'ejecución' : 'ejecuciones'} al día
+                        </strong>{' '}
+                        en {diasSeleccionados.length} días (
+                        <span className="text-white font-semibold">
+                          {diasSeleccionados
+                            .map((k) => DIAS_MAP.find((d) => d.key === k)?.label)
+                            .filter(Boolean)
+                            .join(', ')}
+                        </span>
+                        ) a las {horasProgramadas.map(formatHora12).join(', ')}.
+                      </>
+                    ) : (
+                      <span className="text-amber-400 font-semibold">
+                        La sincronización automática está pausada temporalmente.
+                      </span>
+                    )}
+                  </div>
                 </div>
+
+                {lastSaved && (
+                  <div className="text-[11px] text-gray-500 border-t border-white/5 pt-2 flex items-center gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>
+                      Guardado actualmente en base de datos:{' '}
+                      <strong className="text-gray-300">
+                        {lastSaved.dias
+                          .map((k) => DIAS_MAP.find((d) => d.key === k)?.label)
+                          .filter(Boolean)
+                          .join(', ')}{' '}
+                        ({lastSaved.horas.map(formatHora12).join(', ')})
+                      </strong>
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Feedback messages */}
               {scheduleSuccess && (
-                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs sm:text-sm text-emerald-300 flex items-center gap-3">
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs sm:text-sm text-emerald-300 flex items-center gap-3 animate-in fade-in duration-200">
                   <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-                  <span>{scheduleSuccess}</span>
+                  <span className="font-medium">{scheduleSuccess}</span>
                 </div>
               )}
 
               {scheduleError && (
-                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs sm:text-sm text-red-300 flex items-center gap-3">
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs sm:text-sm text-red-300 flex items-center gap-3 animate-in fade-in duration-200">
                   <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
                   <span>{scheduleError}</span>
                 </div>
               )}
 
               {/* Footer con botón de acción */}
-              <div className="flex justify-end pt-4 border-t border-white/5">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/5">
+                <div className="text-xs text-gray-400">
+                  {hasUnsavedChanges ? (
+                    <span className="text-amber-400 font-bold flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                      Tienes cambios sin guardar. Haz clic en el botón para aplicarlos.
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400/80 flex items-center gap-1.5">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      Tus horarios están guardados y activos en el robot.
+                    </span>
+                  )}
+                </div>
+
                 <button
                   type="button"
                   onClick={handleSaveSchedule}
                   disabled={savingSchedule}
-                  className="flex items-center gap-2.5 px-7 py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/20 hover:shadow-indigo-500/30 transition-all text-xs sm:text-sm"
+                  className={`flex items-center gap-2.5 px-8 py-4 font-black rounded-2xl shadow-xl transition-all text-xs sm:text-sm ${
+                    hasUnsavedChanges
+                      ? 'bg-gradient-to-r from-orange-600 via-indigo-600 to-indigo-500 hover:from-orange-500 hover:to-indigo-400 text-white shadow-indigo-600/30 scale-105 ring-2 ring-white/20 animate-pulse'
+                      : 'bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white shadow-indigo-600/20'
+                  }`}
                 >
-                  <Check className="w-4 h-4" />
-                  {savingSchedule ? 'Guardando...' : 'Guardar Programación'}
+                  <Save className="w-4 h-4" />
+                  {savingSchedule
+                    ? 'Guardando en Servidor...'
+                    : hasUnsavedChanges
+                    ? 'Guardar Cambios Pendientes'
+                    : 'Guardar Programación'}
                 </button>
               </div>
             </div>

@@ -4,11 +4,22 @@ import { CronJob } from 'cron';
 import { PrismaService } from '../prisma.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { IsArray, IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class ScheduleConfigDto {
-  sincroAutomaticaActiva!: boolean;
-  diasSemana!: number[]; // 0=Dom, 1=Lun, ..., 6=Sáb
-  horas!: string[]; // ['06:00', '18:00']
+  @IsBoolean()
+  @IsOptional()
+  sincroAutomaticaActiva?: boolean;
+
+  @IsArray()
+  @IsNumber({}, { each: true })
+  @IsOptional()
+  diasSemana?: number[]; // 0=Dom, 1=Lun, ..., 6=Sáb
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  horas?: string[]; // ['06:00', '18:00']
 }
 
 @Injectable()
