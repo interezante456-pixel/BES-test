@@ -53,6 +53,7 @@ export class UsuariosService {
         apellidos: true,
         dni: true,
         rol: true,
+        modulosPermitidos: true,
         telegramChatId: true,
         createdAt: true,
       },
@@ -70,6 +71,7 @@ export class UsuariosService {
         apellidos: true,
         dni: true,
         rol: true,
+        modulosPermitidos: true,
         telegramChatId: true,
         createdAt: true,
         asignaciones: {
@@ -98,6 +100,7 @@ export class UsuariosService {
     dni: string;
     password: string;
     rol: string;
+    modulosPermitidos?: string[];
     telegramChatId?: string;
   }) {
     if (data.rol === 'SUPER_ADMIN') {
@@ -136,6 +139,10 @@ export class UsuariosService {
       throw new ConflictException(`El correo autogenerado ${email} ya está registrado`);
     }
 
+    const modulos = Array.isArray(data.modulosPermitidos) && data.modulosPermitidos.length > 0
+      ? (data.modulosPermitidos as any[])
+      : ['SUNAT' as any];
+
     const hashedPassword = await bcrypt.hash(data.password, 10);
     return this.prisma.usuario.create({
       data: {
@@ -145,6 +152,7 @@ export class UsuariosService {
         email,
         password: hashedPassword,
         rol: data.rol as any,
+        modulosPermitidos: modulos,
         telegramChatId: data.telegramChatId ? data.telegramChatId.trim() : null,
       },
       select: {
@@ -154,6 +162,7 @@ export class UsuariosService {
         apellidos: true,
         dni: true,
         rol: true,
+        modulosPermitidos: true,
         telegramChatId: true,
         createdAt: true,
       },
@@ -168,11 +177,17 @@ export class UsuariosService {
       dni?: string;
       password?: string;
       rol?: string;
+      modulosPermitidos?: string[];
       telegramChatId?: string;
     },
+    callerRol?: string,
   ) {
     const user = await this.prisma.usuario.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    if (user.rol === 'SUPER_ADMIN' && callerRol !== 'SUPER_ADMIN' && id !== user.id) {
+      throw new ForbiddenException('Solo el Super Admin puede modificar una cuenta Super Admin');
+    }
 
     const updateData: any = {};
     if (data.nombres !== undefined) updateData.nombres = data.nombres.trim();
@@ -184,7 +199,15 @@ export class UsuariosService {
       }
       updateData.dni = cleanDni;
     }
-    if (data.rol !== undefined) updateData.rol = data.rol;
+    if (data.rol !== undefined) {
+      if (data.rol === 'SUPER_ADMIN' && user.rol !== 'SUPER_ADMIN') {
+        throw new ForbiddenException('No se puede promover un usuario a Super Admin');
+      }
+      updateData.rol = data.rol;
+    }
+    if (data.modulosPermitidos !== undefined && Array.isArray(data.modulosPermitidos)) {
+      updateData.modulosPermitidos = data.modulosPermitidos;
+    }
     if (data.telegramChatId !== undefined)
       updateData.telegramChatId = data.telegramChatId ? data.telegramChatId.trim() : null;
 
@@ -215,6 +238,7 @@ export class UsuariosService {
         apellidos: true,
         dni: true,
         rol: true,
+        modulosPermitidos: true,
         telegramChatId: true,
       },
     });

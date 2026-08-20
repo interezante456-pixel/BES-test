@@ -16,6 +16,8 @@ export class EmpresasService {
     const razonSocial = String(createEmpresaDto.razonSocial || '').trim();
     const usuarioSol = String(createEmpresaDto.usuarioSol || '').trim();
     const claveSol = String(createEmpresaDto.claveSol || '').trim();
+    const habilitadoSunat = createEmpresaDto.habilitadoSunat !== undefined ? Boolean(createEmpresaDto.habilitadoSunat) : true;
+    const habilitadoSunafil = createEmpresaDto.habilitadoSunafil !== undefined ? Boolean(createEmpresaDto.habilitadoSunafil) : false;
 
     if (!ruc || !razonSocial || !usuarioSol || !claveSol) {
       throw new BadRequestException(
@@ -28,9 +30,19 @@ export class EmpresasService {
     });
 
     if (existing) {
-      throw new ConflictException(
-        `La empresa con RUC ${ruc} ya está registrada.`,
-      );
+      // Si la empresa ya existe, actualizar sus flags de entidad sin dar error
+      const updateData: any = {};
+      if (createEmpresaDto.habilitadoSunat !== undefined) updateData.habilitadoSunat = habilitadoSunat;
+      if (createEmpresaDto.habilitadoSunafil !== undefined) updateData.habilitadoSunafil = habilitadoSunafil;
+      if (usuarioSol) updateData.usuarioSol = usuarioSol;
+      if (claveSol) updateData.claveSol = this.encryptionService.encrypt(claveSol);
+
+      await this.prisma.empresa.update({
+        where: { id: existing.id },
+        data: updateData,
+      });
+
+      return { ...existing, ...updateData };
     }
 
     const claveEncriptada = this.encryptionService.encrypt(claveSol);
@@ -40,6 +52,8 @@ export class EmpresasService {
         razonSocial,
         usuarioSol,
         claveSol: claveEncriptada,
+        habilitadoSunat,
+        habilitadoSunafil,
         usuarioId: usuarioId,
       },
     });
@@ -49,7 +63,7 @@ export class EmpresasService {
       accion: 'CREAR_EMPRESA',
       entidad: 'Empresa',
       entidadId: nuevaEmpresa.id,
-      detalles: { ruc, razonSocial, usuarioSol },
+      detalles: { ruc, razonSocial, usuarioSol, habilitadoSunat, habilitadoSunafil },
     });
 
     return nuevaEmpresa;
@@ -72,6 +86,8 @@ export class EmpresasService {
           razonSocial: true,
           usuarioSol: true,
           claveSol: true,
+          habilitadoSunat: true,
+          habilitadoSunafil: true,
           estadoConexion: true,
           estadoSincro: true,
           activo: true,
@@ -124,6 +140,8 @@ export class EmpresasService {
         ruc: true,
         razonSocial: true,
         usuarioSol: true,
+        habilitadoSunat: true,
+        habilitadoSunafil: true,
         estadoConexion: true,
         estadoSincro: true,
         activo: true,

@@ -4,7 +4,7 @@ function setInputValue(input, value) {
   if (!input || value === undefined || value === null) return;
   try {
     input.focus();
-    // Usar el setter nativo de HTMLInputElement para evitar que React / Angular ignoren la escritura
+    // Usar el setter nativo de HTMLInputElement para que Angular / React / Vue sincronicen su estado interno
     const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
     if (nativeSetter) {
       nativeSetter.call(input, value);
@@ -15,10 +15,13 @@ function setInputValue(input, value) {
     input.value = value;
   }
 
-  // Disparar todos los eventos de interacción posibles
-  ['input', 'change', 'keydown', 'keyup', 'blur'].forEach(eventType => {
-    input.dispatchEvent(new Event(eventType, { bubbles: true }));
-  });
+  // Disparar eventos nativos seguros sin 'blur' prematuro que limpie el campo
+  try {
+    input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+  } catch (e) {
+    // Fallback
+  }
 }
 
 function findInputs() {
@@ -35,29 +38,50 @@ function findInputs() {
     const ariaLabel = (input.getAttribute('aria-label') || '').toLowerCase();
 
     // 1. Password input
-    if (type === 'password' || id.includes('clave') || id.includes('contras') || name.includes('clave') || name.includes('contras') || placeholder.includes('contra') || placeholder.includes('clave')) {
+    if (
+      type === 'password' ||
+      id.includes('clave') ||
+      id.includes('contras') ||
+      name.includes('clave') ||
+      name.includes('contras') ||
+      placeholder.includes('contra') ||
+      placeholder.includes('clave')
+    ) {
       if (!passInput) passInput = input;
       continue;
     }
 
     // 2. RUC input
-    if (id.includes('ruc') || name.includes('ruc') || placeholder.includes('ruc') || ariaLabel.includes('ruc')) {
+    if (
+      id.includes('ruc') ||
+      name.includes('ruc') ||
+      placeholder.includes('ruc') ||
+      ariaLabel.includes('ruc')
+    ) {
       if (!rucInput) rucInput = input;
       continue;
     }
 
     // 3. Usuario input
-    if (id.includes('usuario') || name.includes('usuario') || id.includes('user') || name.includes('user') || placeholder.includes('usuario') || placeholder.includes('user') || ariaLabel.includes('usuario')) {
+    if (
+      id.includes('usuario') ||
+      name.includes('usuario') ||
+      id.includes('user') ||
+      name.includes('user') ||
+      placeholder.includes('usuario') ||
+      placeholder.includes('user') ||
+      ariaLabel.includes('usuario')
+    ) {
       if (!userInput) userInput = input;
       continue;
     }
   }
 
-  // Fallback por orden visual si no se encontraron por id/placeholder (en formularios estándar RUC es el 1ro, Usuario el 2do, Clave el 3ro)
+  // Fallback por orden visual en formularios estándar
   if (!rucInput || !userInput || !passInput) {
     const textInputs = inputs.filter(i => {
       const t = (i.type || 'text').toLowerCase();
-      return t === 'text' || t === 'tel' || t === 'number' || t === '';
+      return (t === 'text' || t === 'tel' || t === 'number' || t === '') && i.style.display !== 'none';
     });
 
     if (!rucInput && textInputs[0]) rucInput = textInputs[0];
@@ -74,22 +98,35 @@ function findInputs() {
 function fillSunatForm(credentials) {
   if (!credentials || !credentials.ruc) return false;
 
-  // Si las credenciales tienen más de 5 minutos, expirar
+  // Si las credenciales tienen más de 5 minutos, ignorar
   if (Date.now() - credentials.timestamp > 5 * 60 * 1000) {
-    chrome.storage.local.remove('bes_pending_login');
     return false;
   }
 
   const { rucInput, userInput, passInput } = findInputs();
 
   if (rucInput && userInput && passInput) {
-    setInputValue(rucInput, credentials.ruc);
-    setInputValue(userInput, credentials.usuarioSol);
-    setInputValue(passInput, credentials.claveSol);
+    let filledAny = false;
 
-    console.log('[BES Extension] Formulario autocompletado con éxito.');
-    chrome.storage.local.remove('bes_pending_login');
-    showSunatBanner(credentials.ruc);
+    if (rucInput.value !== credentials.ruc) {
+      setInputValue(rucInput, credentials.ruc);
+      filledAny = true;
+    }
+
+    if (userInput.value !== credentials.usuarioSol) {
+      setInputValue(userInput, credentials.usuarioSol);
+      filledAny = true;
+    }
+
+    if (credentials.claveSol && passInput.value !== credentials.claveSol) {
+      setInputValue(passInput, credentials.claveSol);
+      filledAny = true;
+    }
+
+    if (filledAny) {
+      console.log('[BES Extension] Formulario autocompletado y sincronizado con éxito.');
+      showSunatBanner(credentials.ruc);
+    }
     return true;
   }
 
@@ -104,44 +141,62 @@ function showSunatBanner(ruc) {
     position: fixed;
     top: 15px;
     right: 15px;
-    z-index: 9999999;
-    background: #111827;
-    color: #34d399;
-    border: 1px solid rgba(52, 211, 153, 0.4);
+    z-index: 99999999;
+    background: #0f172a;
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.4);
     padding: 12px 18px;
     border-radius: 12px;
     font-family: system-ui, -apple-system, sans-serif;
     font-size: 13px;
-    font-weight: bold;
+    font-weight: 600;
     box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
     gap: 10px;
+    transition: opacity 0.4s ease;
   `;
   banner.innerHTML = `
-    <span>✅ BES autocompletó las credenciales del RUC <strong>${ruc}</strong>. Haz clic en <strong>Iniciar sesión</strong>.</span>
+    <span>✅ BES autocompletó las credenciales del RUC <strong>${ruc}</strong>.</span>
   `;
   document.body.appendChild(banner);
   setTimeout(() => {
     banner.style.opacity = '0';
-    banner.style.transition = 'opacity 0.5s ease';
-    setTimeout(() => banner.remove(), 500);
-  }, 7000);
+    setTimeout(() => banner.remove(), 400);
+  }, 6000);
 }
 
 function init() {
   chrome.storage.local.get('bes_pending_login', (result) => {
     const credentials = result.bes_pending_login;
-    if (!credentials) return;
+    if (!credentials || !credentials.ruc) return;
 
     let attempts = 0;
+    // Intentos frecuentes al inicio y luego vigilancia continua para evitar que SUNAT borre la contraseña
     const interval = setInterval(() => {
       attempts++;
-      const success = fillSunatForm(credentials);
-      if (success || attempts > 30) {
+      fillSunatForm(credentials);
+
+      // Mantener vigilancia durante 15 intentos (~6 segundos) para neutralizar scripts tardíos de SUNAT
+      if (attempts >= 15) {
         clearInterval(interval);
+        // Limpiar de storage después de haberse completado con éxito la sesión
+        setTimeout(() => {
+          chrome.storage.local.remove('bes_pending_login');
+        }, 10000);
       }
     }, 400);
+
+    // Observador de mutaciones por si SUNAT re-renderiza el formulario con React/Angular
+    const observer = new MutationObserver(() => {
+      const { passInput } = findInputs();
+      if (passInput && credentials.claveSol && passInput.value !== credentials.claveSol) {
+        fillSunatForm(credentials);
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    setTimeout(() => observer.disconnect(), 15000);
   });
 }
 

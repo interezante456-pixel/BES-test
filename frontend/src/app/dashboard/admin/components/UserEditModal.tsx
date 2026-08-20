@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { X, UserCog, Eye, EyeOff, Mail } from 'lucide-react';
+import { X, UserCog, Eye, EyeOff, Mail, Shield, CheckSquare, Square } from 'lucide-react';
+import { ModuloAcceso } from '@/types/user';
 
 interface UserEditModalProps {
   isOpen: boolean;
@@ -9,14 +10,30 @@ interface UserEditModalProps {
   onSubmit: (id: string, data: any) => Promise<void>;
 }
 
+const AVAILABLE_MODULES: { key: ModuloAcceso; label: string; desc: string; badge?: string }[] = [
+  { key: 'SUNAT', label: 'Módulo SUNAT', desc: 'Buzón electrónico y visor de notificaciones' },
+  { key: 'SUNAFIL', label: 'Módulo SUNAFIL', desc: 'Casilla electrónica laboral', badge: 'BETA' },
+  { key: 'AUDITORIA', label: 'Auditoría del Sistema', desc: 'Logs de seguridad y rastreo de acciones' },
+  { key: 'GESTION_EMPRESAS', label: 'Gestión de Empresas', desc: 'Crear, editar y sincronizar empresas' },
+];
+
 export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onClose, onSubmit }) => {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    nombres: string;
+    apellidos: string;
+    dni: string;
+    rol: string;
+    password: string;
+    telegramChatId: string;
+    modulosPermitidos: ModuloAcceso[];
+  }>({
     nombres: '',
     apellidos: '',
     dni: '',
     rol: 'USUARIO_LOCAL',
     password: '',
     telegramChatId: '',
+    modulosPermitidos: ['SUNAT'],
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,9 +47,20 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
         rol: user.rol,
         password: '',
         telegramChatId: user.telegramChatId || '',
+        modulosPermitidos: user.modulosPermitidos || ['SUNAT'],
       });
     }
   }, [user]);
+
+  const toggleModule = (moduleKey: ModuloAcceso) => {
+    setForm(prev => {
+      const exists = prev.modulosPermitidos.includes(moduleKey);
+      const updated = exists
+        ? prev.modulosPermitidos.filter(m => m !== moduleKey)
+        : [...prev.modulosPermitidos, moduleKey];
+      return { ...prev, modulosPermitidos: updated };
+    });
+  };
 
   const getAutoEmailPreview = () => {
     const cleanStr = (str: string) =>
@@ -68,6 +96,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
         apellidos: form.apellidos,
         dni: form.dni,
         rol: form.rol,
+        modulosPermitidos: form.modulosPermitidos,
         telegramChatId: form.telegramChatId,
       };
       if (form.password.trim()) data.password = form.password;
@@ -83,7 +112,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-[#111827] rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-xl bg-[#111827] rounded-3xl border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-white/5 flex items-center justify-between bg-amber-500/5">
           <div className="flex items-center gap-3">
@@ -92,7 +121,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
             </div>
             <div>
               <h3 className="text-lg font-bold text-white">Editar Usuario</h3>
-              <p className="text-xs text-gray-400">Modifica los datos de <span className="text-white font-semibold">{user.nombres || user.nombre}</span></p>
+              <p className="text-xs text-gray-400">Modifica datos y permisos de <span className="text-white font-semibold">{user.nombres || user.nombre}</span></p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors">
@@ -101,7 +130,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-1.5">Nombres</label>
@@ -156,39 +185,84 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
             <span className="text-xs font-bold text-amber-300 font-mono">{getAutoEmailPreview()}</span>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1.5">
-              Nueva Contraseña <span className="text-gray-600 font-normal">(dejar vacío para no cambiar)</span>
-            </label>
-            <div className="relative">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+                Nueva Contraseña <span className="text-gray-600 font-normal">(opcional)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full bg-[#1f2937] border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-white outline-none focus:ring-2 focus:ring-amber-500/50 text-sm transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Telegram Chat ID (Alertas)</label>
               <input
-                type={showPassword ? 'text' : 'password'}
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-                placeholder="••••••••"
-                className="w-full bg-[#1f2937] border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-white outline-none focus:ring-2 focus:ring-amber-500/50 text-sm transition-all"
+                value={form.telegramChatId}
+                onChange={e => setForm({ ...form, telegramChatId: e.target.value })}
+                placeholder="Ej: 123456789"
+                className="w-full bg-[#1f2937] border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-amber-500/50 text-sm transition-all"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1.5">Telegram Chat ID (Para Alertas)</label>
-            <input
-              value={form.telegramChatId}
-              onChange={e => setForm({ ...form, telegramChatId: e.target.value })}
-              placeholder="Ej: 123456789"
-              className="w-full bg-[#1f2937] border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-amber-500/50 text-sm transition-all"
-            />
+          {/* ASIGNACIÓN DE MÓDULOS */}
+          <div className="pt-2">
+            <label className="block text-xs font-bold text-gray-300 mb-2 flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-amber-400" />
+              Módulos Permitidos para este Usuario
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {AVAILABLE_MODULES.map(mod => {
+                const isChecked = form.modulosPermitidos.includes(mod.key);
+                return (
+                  <div
+                    key={mod.key}
+                    onClick={() => toggleModule(mod.key)}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
+                      isChecked
+                        ? 'bg-amber-500/10 border-amber-500/40 text-white'
+                        : 'bg-white/[0.02] border-white/5 text-gray-400 hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="mt-0.5">
+                      {isChecked ? (
+                        <CheckSquare className="w-4 h-4 text-amber-400" />
+                      ) : (
+                        <Square className="w-4 h-4 text-gray-500" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold">{mod.label}</span>
+                        {mod.badge && (
+                          <span className="text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 rounded font-bold">
+                            {mod.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-gray-400 leading-tight mt-0.5">{mod.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="flex gap-3 justify-end pt-2">
+          <div className="flex gap-3 justify-end pt-3 border-t border-white/5">
             <button
               type="button"
               onClick={onClose}

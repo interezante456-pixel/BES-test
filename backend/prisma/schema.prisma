@@ -13,17 +13,26 @@ enum Role {
   USUARIO_LOCAL
 }
 
+enum ModuloAcceso {
+  SUNAT
+  SUNAFIL
+  AUDITORIA
+  GESTION_USUARIOS
+  GESTION_EMPRESAS
+}
+
 model Usuario {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String
-  nombres   String
-  apellidos String
-  dni       String    @unique
-  rol       Role      @default(USUARIO_LOCAL)
-  telegramChatId String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id                     String         @id @default(uuid())
+  email                  String         @unique
+  password               String
+  nombres                String
+  apellidos              String
+  dni                    String         @unique
+  rol                    Role           @default(USUARIO_LOCAL)
+  modulosPermitidos      ModuloAcceso[] @default([SUNAT])
+  telegramChatId         String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
   
   empresas               Empresa[]
   asignaciones           EmpresaAsignacion[]
@@ -43,6 +52,8 @@ model Empresa {
   razonSocial          String
   usuarioSol           String
   claveSol             String
+  habilitadoSunat      Boolean        @default(true)
+  habilitadoSunafil    Boolean        @default(false)
   estadoConexion       EstadoConexion @default(CONECTADO)
   estadoSincro         String         @default("IDLE")
   activo               Boolean        @default(true)
@@ -117,5 +128,13 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+}
+
+model ConfiguracionSistema {
+  id                     String   @id @default("default")
+  sincroAutomaticaActiva Boolean  @default(true)
+  diasSemana             Int[]    @default([0, 1, 2, 3, 4, 5, 6]) // 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb
+  horas                  String[] @default(["06:00", "18:00"])    // Horas en formato HH:mm (24h)
+  updatedAt              DateTime @updatedAt
 }
 

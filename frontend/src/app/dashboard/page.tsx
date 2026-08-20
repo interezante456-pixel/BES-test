@@ -29,6 +29,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [startMonth, setStartMonth] = useState('');
   const [endMonth, setEndMonth] = useState('');
+  const [activeTab, setActiveTab] = useState<'ALL' | 'SUNAT' | 'SUNAFIL'>('ALL');
   const router = useRouter();
 
   useEffect(() => {
@@ -59,43 +60,85 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-          <TrendingUp className="w-7 h-7 text-indigo-400" />
-          Panel de Control
-        </h2>
-        <p className="text-gray-400 text-sm mt-1">Resumen del estado actual del sistema y clasificación de alertas SUNAT.</p>
+      {/* Header con Selector de Entidad */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+            <TrendingUp className="w-7 h-7 text-indigo-400" />
+            Panel de Control 360°
+          </h2>
+          <p className="text-gray-400 text-sm mt-1">Resumen centralizado de alertas, notificaciones y estado de robots de monitoreo.</p>
+        </div>
+
+        {/* Tab Selector */}
+        <div className="flex items-center bg-[#111827] p-1 rounded-2xl border border-white/5 self-start md:self-auto">
+          <button
+            onClick={() => setActiveTab('ALL')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'ALL'
+                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            🌐 Vista General 360°
+          </button>
+          <button
+            onClick={() => setActiveTab('SUNAT')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeTab === 'SUNAT'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            SUNAT
+          </button>
+          <button
+            onClick={() => setActiveTab('SUNAFIL')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeTab === 'SUNAFIL'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+            SUNAFIL (Beta)
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <KpiCard
-          label="Empresas Activas"
+          label="Empresas Monitoreadas"
           value={stats?.totalEmpresas ?? 0}
           icon={<Building2 className="w-6 h-6" />}
           color="indigo"
-          subtitle="conectadas al sistema"
+          subtitle="11 en SUNAT • 11 en SUNAFIL"
+          onClick={() => router.push(activeTab === 'SUNAFIL' ? '/dashboard/sunafil/empresas' : '/dashboard/sunat/empresas')}
+          clickable
         />
         <KpiCard
-          label="Total Documentos"
-          value={stats?.totalNotificaciones ?? 0}
+          label="Total Notificaciones"
+          value={activeTab === 'SUNAFIL' ? 0 : (stats?.totalNotificaciones ?? 0)}
           icon={<Mail className="w-6 h-6" />}
           color="blue"
-          subtitle="recibidos en total"
+          subtitle={activeTab === 'SUNAFIL' ? 'SUNAFIL (En pruebas)' : 'recibidos en SUNAT'}
+          onClick={() => router.push(activeTab === 'SUNAFIL' ? '/dashboard/sunafil' : '/dashboard/bandeja')}
+          clickable
         />
         <KpiCard
-          label="Alertas Peligrosas"
-          value={stats?.totalPeligrosas ?? 0}
+          label="Alertas Críticas / Coactivas"
+          value={activeTab === 'SUNAFIL' ? 0 : (stats?.totalPeligrosas ?? 0)}
           icon={<ShieldAlert className="w-6 h-6" />}
           color="rose"
-          subtitle="coactivas / embargos / pagos"
+          subtitle="coactivas / resoluciones"
           onClick={() => router.push('/dashboard/bandeja')}
           clickable
         />
         <KpiCard
-          label="Sin Leer"
-          value={stats?.sinLeer ?? 0}
+          label="Sin Leer (Pendientes)"
+          value={activeTab === 'SUNAFIL' ? 0 : (stats?.sinLeer ?? 0)}
           icon={<AlertTriangle className="w-6 h-6" />}
           color="amber"
           subtitle="pendientes de revisión"
@@ -104,10 +147,10 @@ export default function DashboardPage() {
         />
         <KpiCard
           label="PDFs No Encontrados"
-          value={stats?.sinPdf ?? 0}
+          value={activeTab === 'SUNAFIL' ? 0 : (stats?.sinPdf ?? 0)}
           icon={<FileX className="w-6 h-6" />}
           color="red"
-          subtitle="errores en SUNAT"
+          subtitle="errores en portal"
         />
       </div>
 

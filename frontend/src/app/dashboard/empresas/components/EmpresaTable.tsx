@@ -66,7 +66,19 @@ export const EmpresaTable: React.FC<EmpresaTableProps> = ({
                           </span>
                         )}
                       </div>
-                      <div className="text-xs font-mono text-gray-500">RUC: {emp.ruc}</div>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-xs font-mono text-gray-500">RUC: {emp.ruc}</span>
+                        {emp.habilitadoSunat !== false && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            SUNAT
+                          </span>
+                        )}
+                        {emp.habilitadoSunafil && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                            SUNAFIL
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </td>

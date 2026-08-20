@@ -69,6 +69,7 @@ export class AuthService {
       nombre: fullName,
       dni: user.dni,
       rol: user.rol,
+      modulosPermitidos: user.modulosPermitidos || ['SUNAT'],
       telegramChatId: user.telegramChatId,
     };
     return {
@@ -81,6 +82,7 @@ export class AuthService {
         nombre: fullName,
         dni: user.dni,
         rol: user.rol,
+        modulosPermitidos: user.modulosPermitidos || ['SUNAT'],
         telegramChatId: user.telegramChatId,
       },
     };
@@ -124,6 +126,7 @@ export class AuthService {
       nombre: fullName,
       dni: user.dni,
       rol: user.rol,
+      modulosPermitidos: user.modulosPermitidos || ['SUNAT'],
       telegramChatId: user.telegramChatId,
     };
     return {
@@ -136,6 +139,7 @@ export class AuthService {
         nombre: fullName,
         dni: user.dni,
         rol: user.rol,
+        modulosPermitidos: user.modulosPermitidos || ['SUNAT'],
         telegramChatId: user.telegramChatId,
       },
     };

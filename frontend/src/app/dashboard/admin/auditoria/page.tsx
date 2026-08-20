@@ -17,6 +17,7 @@ import {
   Laptop
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import api from '@/lib/api';
 
 interface AuditLogItem {
   id: string;
@@ -39,7 +40,7 @@ interface AuditLogItem {
 }
 
 export default function AuditoriaPage() {
-  const { token } = useAuthStore();
+  const { user } = useAuthStore();
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -50,48 +51,57 @@ export default function AuditoriaPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
   const fetchAcciones = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/auditoria/acciones`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAccionesUnicas(data);
-      }
+      const res = await api.get('/auditoria/acciones');
+      setAccionesUnicas(res.data);
     } catch (e) {
       console.error('Error cargando acciones únicas:', e);
     }
-  }, [API_URL, token]);
+  }, []);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
+      const params: any = {
         page: page.toString(),
         limit: '15',
-      });
-      if (search) params.append('search', search);
-      if (accionFilter) params.append('accion', accionFilter);
+      };
+      if (search) params.search = search;
+      if (accionFilter) params.accion = accionFilter;
 
-      const res = await fetch(`${API_URL}/auditoria?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setLogs(data.items);
-        setTotalPages(data.meta.totalPages);
-        setTotalItems(data.meta.total);
-      }
+      const res = await api.get('/auditoria', { params });
+      setLogs(res.data.items);
+      setTotalPages(res.data.meta.totalPages);
+      setTotalItems(res.data.meta.total);
     } catch (e) {
       console.error('Error cargando logs de auditoría:', e);
     } finally {
       setLoading(false);
     }
-  }, [API_URL, token, page, search, accionFilter]);
+  }, [page, search, accionFilter]);
+
+  useEffect(() => {
+    if (user?.rol === 'SUPER_ADMIN') {
+      fetchAcciones();
+    }
+  }, [fetchAcciones, user?.rol]);
+
+  useEffect(() => {
+    if (user?.rol === 'SUPER_ADMIN') {
+      fetchLogs();
+    }
+  }, [fetchLogs, user?.rol]);
+
+  if (user && user.rol !== 'SUPER_ADMIN') {
+    return (
+      <div className="p-12 text-center bg-[#111827] rounded-3xl border border-white/5 max-w-lg mx-auto mt-10">
+        <ShieldCheck className="w-12 h-12 text-purple-400 mx-auto mb-3" />
+        <h3 className="text-lg font-bold text-white mb-1">Acceso Restringido</h3>
+        <p className="text-xs text-gray-400">El módulo de auditoría es de acceso exclusivo para la cuenta Super Administrador.</p>
+      </div>
+    );
+  }
 
   useEffect(() => {
     fetchAcciones();

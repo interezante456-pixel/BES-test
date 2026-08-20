@@ -61,7 +61,9 @@ export class ScraperService {
     this.logger.log(
       `Iniciando Puppeteer. PUPPETEER_HEADLESS="${process.env.PUPPETEER_HEADLESS}" → Headless: ${isHeadless}`,
     );
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
     const browser = await puppeteer.launch({
+      executablePath,
       headless: isHeadless,
       defaultViewport: { width: 1920, height: 1080 },
       args: [

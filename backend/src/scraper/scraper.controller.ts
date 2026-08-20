@@ -1,6 +1,9 @@
 import {
   Controller,
+  Get,
+  Put,
   Post,
+  Body,
   Param,
   UseGuards,
   Request,
@@ -11,6 +14,7 @@ import { Queue } from 'bullmq';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma.service';
 import { ScraperService } from './scraper.service';
+import { CronService, ScheduleConfigDto } from './cron.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('scraper')
@@ -19,7 +23,26 @@ export class ScraperController {
     @InjectQueue('sunat-scraper-queue') private scraperQueue: Queue,
     private prisma: PrismaService,
     private scraperService: ScraperService,
+    private cronService: CronService,
   ) {}
+
+  @Get('schedule')
+  async getSchedule(@Request() req: any) {
+    const { rol } = req.user;
+    if (rol !== 'SUPER_ADMIN' && rol !== 'ADMIN') {
+      throw new ForbiddenException('Solo administradores pueden ver la programación');
+    }
+    return this.cronService.getOrCreateConfig();
+  }
+
+  @Put('schedule')
+  async updateSchedule(@Body() body: ScheduleConfigDto, @Request() req: any) {
+    const { rol } = req.user;
+    if (rol !== 'SUPER_ADMIN' && rol !== 'ADMIN') {
+      throw new ForbiddenException('Solo administradores pueden modificar la programación');
+    }
+    return this.cronService.updateScheduleConfig(body);
+  }
 
   @Post('sync/:empresaId')
   async syncEmpresa(

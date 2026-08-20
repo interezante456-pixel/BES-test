@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Plus, Trash2, Building2, Pencil, Eye } from 'lucide-react';
+import { Users, Plus, Trash2, Building2, Pencil, Eye, Shield } from 'lucide-react';
 
 interface UserListProps {
   usuarios: any[];
@@ -27,7 +27,10 @@ export const UserList: React.FC<UserListProps> = ({
   return (
     <div className="bg-[#111827] rounded-3xl border border-white/5 overflow-hidden">
       <div className="p-6 border-b border-white/5 flex items-center justify-between">
-        <h3 className="text-lg font-bold text-white">Usuarios del Sistema</h3>
+        <div>
+          <h3 className="text-lg font-bold text-white">Usuarios del Sistema</h3>
+          <p className="text-xs text-gray-400">Gestiona roles, asignaciones de empresas y permisos por módulo</p>
+        </div>
         <button
           onClick={onCreateOpen}
           className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-500/20"
@@ -46,15 +49,16 @@ export const UserList: React.FC<UserListProps> = ({
           const empresaCount = getEmpresaCount(u.id);
           const fullName = u.nombres && u.apellidos ? `${u.nombres} ${u.apellidos}` : (u.nombre || 'Usuario');
           const initial = fullName.charAt(0).toUpperCase();
+          const modulos = u.modulosPermitidos || ['SUNAT'];
 
           return (
-            <div key={u.id} className="flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors">
+            <div key={u.id} className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors gap-3">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600/30 to-purple-600/30 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-sm">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600/30 to-purple-600/30 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-sm shrink-0">
                   {initial}
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-white font-semibold text-sm">{fullName}</p>
                     {u.dni && (
                       <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded">
@@ -62,10 +66,29 @@ export const UserList: React.FC<UserListProps> = ({
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-500 text-xs font-mono">{u.email}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <p className="text-gray-500 text-xs font-mono">{u.email}</p>
+                    {/* Módulos badges */}
+                    <div className="flex items-center gap-1">
+                      {modulos.map((m: string) => (
+                        <span
+                          key={m}
+                          className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                            m === 'SUNAFIL'
+                              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                              : m === 'AUDITORIA'
+                              ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                              : 'bg-white/5 text-gray-400 border-white/10'
+                          }`}
+                        >
+                          {m}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
                 {/* Badge de empresas */}
                 <div className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border ${
                   empresaCount > 0
@@ -126,4 +149,3 @@ export const UserList: React.FC<UserListProps> = ({
     </div>
   );
 };
-

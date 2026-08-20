@@ -65,8 +65,8 @@ export class UsuariosController {
   // Solo SUPER_ADMIN y ADMIN pueden editar usuarios
   @Roles('SUPER_ADMIN', 'ADMIN')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.usuariosService.update(id, body);
+  update(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+    return this.usuariosService.update(id, body, req.user?.rol);
   }
 
   // Solo SUPER_ADMIN y ADMIN pueden eliminar usuarios

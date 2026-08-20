@@ -115,6 +115,23 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({ isOpen, userId
                   {user.telegramChatId ? 'ALERTAS ACTIVAS' : 'SIN TELEGRAM'}
                 </span>
               </div>
+
+              <div className="col-span-2 bg-[#1f2937]/50 rounded-2xl p-4 border border-white/5">
+                <p className="text-gray-400 text-xs font-semibold mb-2">Módulos de Sistema Habilitados</p>
+                <div className="flex flex-wrap gap-2">
+                  {(user.modulosPermitidos || ['SUNAT']).map((m: string) => (
+                    <span
+                      key={m}
+                      className="text-xs font-bold px-2.5 py-1 rounded-xl bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                    >
+                      {m === 'SUNAT' ? '🔴 SUNAT (Buzón SOL)' :
+                       m === 'SUNAFIL' ? '🔵 SUNAFIL (Casilla)' :
+                       m === 'AUDITORIA' ? '🛡️ Auditoría' :
+                       m === 'GESTION_EMPRESAS' ? '🏢 Empresas' : m}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Empresa List */}
