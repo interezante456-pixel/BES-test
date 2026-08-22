@@ -46,21 +46,8 @@ export default function SunatEmpresasPage() {
   );
 
   const handleOpenSunat = (empresa: any) => {
-    window.postMessage({
-      type: 'BES_FILL_SUNAT',
-      data: {
-        ruc: empresa.ruc,
-        usuarioSol: empresa.usuarioSol,
-        claveSol: empresa.claveSol
-      }
-    }, '*');
-
     setSunatEmpresa(empresa);
     setIsSunatModalOpen(true);
-
-    setTimeout(() => {
-      window.open('https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm', '_blank', 'noopener,noreferrer');
-    }, 150);
   };
 
   const handleEdit = (empresa: any) => {
