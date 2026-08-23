@@ -1,84 +1,46 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FileText as FileIcon, Search as SearchIcon, X as XIcon, ExternalLink as ExternalIcon, FilterX as FilterIcon, MailOpen, Mail, Clock, FileText, AlertTriangle, Trash2, RefreshCw, CircleDollarSign } from 'lucide-react';
+import { Mail, MailOpen, Trash2 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
-import api from '@/lib/api';
-import { useAuthStore } from '@/store/useAuthStore';
-import { useNotificationStore } from '@/store/useNotificationStore';
 import { PdfViewerDrawer } from '../components/PdfViewerDrawer';
 import { ZipExportButton } from '../components/ZipExportButton';
+import { PaginationControls } from '@/components/PaginationControls';
+import { NotificationFilterBar } from '../components/NotificationFilterBar';
+import { NotificationItem } from '../components/NotificationItem';
+import { useNotificationList } from '../hooks/useNotificationList';
 
 function BandejaContent() {
-  const [notificaciones, setNotificaciones] = useState<any[]>([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, lastPage: 1 });
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [selectedNotifForDrawer, setSelectedNotifForDrawer] = useState<any | null>(null);
-  const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
-  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [retrying, setRetrying] = useState<Record<string, boolean>>({});
-  const { decrementSinLeer, fetchStats } = useNotificationStore();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const router = useRouter();
   const searchParams = useSearchParams();
   const empresaFilterId = searchParams.get('empresa');
 
-  const fetchNotificaciones = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '50',
-      });
-      if (empresaFilterId) params.append('empresa', empresaFilterId);
-      if (searchTerm) params.append('search', searchTerm);
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
+  const {
+    notificaciones,
+    meta,
+    page,
+    loading,
+    searchTerm,
+    startDate,
+    endDate,
+    retrying,
+    setPage,
+    setSearchTerm,
+    setStartDate,
+    setEndDate,
+    getPdfUrl,
+    markAsRead,
+    clearInbox,
+    retryPdf,
+    clearFilters,
+  } = useNotificationList({
+    endpoint: '/notificaciones',
+    empresaFilterId,
+  });
 
-      const res = await api.get(`/notificaciones?${params.toString()}`);
-      setNotificaciones(res.data.data);
-      setMeta(res.data.meta);
-    } catch (error) {
-      console.error("Error loading notifications", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, empresaFilterId, searchTerm, startDate, endDate]);
-
-  useEffect(() => {
-    if (isAuthenticated) fetchNotificaciones();
-  }, [isAuthenticated, fetchNotificaciones]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, startDate, endDate, empresaFilterId]);
-
-  const markAsRead = async (id: string) => {
-    try {
-      await api.patch(`/notificaciones/${id}/read`);
-      // Remove from list immediately
-      setNotificaciones(prev => prev.filter(n => n.id !== id));
-      decrementSinLeer();
-    } catch (error) {
-      console.error("Error marking as read", error);
-    }
-  };
-
-  const getPdfUrl = (ruta: string | null | undefined): string | null => {
-    if (!ruta) return null;
-    const fileName = ruta.split('/uploads/').pop();
-    if (!fileName) return null;
-    if (typeof window !== 'undefined' && window.location.port === '3500') {
-      return `${window.location.protocol}//${window.location.hostname}:4000/uploads/${fileName}`;
-    }
-    return `/uploads/${fileName}`;
-  };
+  const [selectedNotifForDrawer, setSelectedNotifForDrawer] = useState<any | null>(null);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
   const handleViewPdf = async (notif: any) => {
     await markAsRead(notif.id);
@@ -89,16 +51,6 @@ function BandejaContent() {
     });
   };
 
-  const clearInbox = async () => {
-    // Marcar todo como leído para ESTE usuario (no elimina, no afecta a otros)
-    await api.patch('/notificaciones/mark-all-read');
-    await fetchNotificaciones();
-    fetchStats();
-  };
-
-  // Client-side filtering is no longer needed, the server handles it.
-  const filteredData = notificaciones;
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -108,12 +60,14 @@ function BandejaContent() {
             <Mail className="w-7 h-7 text-blue-400" />
             Bandeja de Entrada
           </h2>
-          <p className="text-gray-400 text-sm mt-1">Notificaciones SUNAT sin leer. Al abrir el PDF, se marcarán como leídas automáticamente.</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Notificaciones SUNAT sin leer. Al abrir el PDF, se marcarán como leídas automáticamente.
+          </p>
         </div>
         <div className="flex items-center gap-3">
-          {filteredData.length > 0 && (
+          {notificaciones.length > 0 && (
             <ZipExportButton
-              notificaciones={filteredData.map(n => ({
+              notificaciones={notificaciones.map((n) => ({
                 id: n.id,
                 asunto: n.asunto,
                 rutaArchivoPdf: getPdfUrl(n.rutaArchivoPdf),
@@ -130,94 +84,20 @@ function BandejaContent() {
       </div>
 
       {/* Search & Date Filters */}
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#111827] p-4 rounded-3xl border border-white/5">
-          {/* Buscador de Texto (6 columnas) */}
-          <div className="md:col-span-6 flex items-center gap-3 bg-white/[0.02] px-4 py-1.5 rounded-2xl border border-white/5">
-            <SearchIcon className="text-gray-500 w-5 h-5 flex-shrink-0" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por RUC, Empresa o Asunto..."
-              className="flex-1 bg-transparent border-none text-white outline-none placeholder-gray-500 py-2 text-sm"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="p-1 text-gray-500 hover:text-white rounded-lg transition-colors"
-              >
-                <XIcon className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Input Fecha Desde (3 columnas) */}
-          <div className="md:col-span-3 flex items-center gap-2 bg-white/[0.02] px-4 py-1.5 rounded-2xl border border-white/5">
-            <span className="text-xs text-gray-500 font-semibold uppercase flex-shrink-0">Desde:</span>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="flex-1 bg-transparent border-none text-white outline-none text-sm [color-scheme:dark] cursor-pointer"
-            />
-            {startDate && (
-              <button
-                onClick={() => setStartDate('')}
-                className="p-1 text-gray-500 hover:text-white rounded-lg transition-colors"
-              >
-                <XIcon className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Input Fecha Hasta (3 columnas) */}
-          <div className="md:col-span-3 flex items-center gap-2 bg-white/[0.02] px-4 py-1.5 rounded-2xl border border-white/5">
-            <span className="text-xs text-gray-500 font-semibold uppercase flex-shrink-0">Hasta:</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="flex-1 bg-transparent border-none text-white outline-none text-sm [color-scheme:dark] cursor-pointer"
-            />
-            {endDate && (
-              <button
-                onClick={() => setEndDate('')}
-                className="p-1 text-gray-500 hover:text-white rounded-lg transition-colors"
-              >
-                <XIcon className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Botones de acción de filtros activos */}
-        {(searchTerm || startDate || endDate || empresaFilterId) && (
-          <div className="flex items-center justify-end gap-3">
-            {empresaFilterId && (
-              <button
-                onClick={() => router.push('/dashboard/bandeja')}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-medium text-xs transition-colors border border-red-500/20"
-              >
-                <FilterIcon className="w-3.5 h-3.5" />
-                Quitar Filtro Empresa
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                setStartDate('');
-                setEndDate('');
-                if (empresaFilterId) router.push('/dashboard/bandeja');
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl font-medium text-xs transition-colors border border-white/5"
-            >
-              <XIcon className="w-3.5 h-3.5" />
-              Limpiar Filtros
-            </button>
-          </div>
-        )}
-      </div>
+      <NotificationFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        startDate={startDate}
+        onStartDateChange={setStartDate}
+        endDate={endDate}
+        onEndDateChange={setEndDate}
+        empresaFilterId={empresaFilterId}
+        onClearEmpresaFilter={() => router.push('/dashboard/bandeja')}
+        onClearFilters={() => {
+          clearFilters();
+          if (empresaFilterId) router.push('/dashboard/bandeja');
+        }}
+      />
 
       {/* List */}
       {loading ? (
@@ -230,7 +110,7 @@ function BandejaContent() {
               Notificaciones Sin Leer
             </h3>
             <div className="flex items-center gap-3">
-              {filteredData.length > 0 && (
+              {notificaciones.length > 0 && (
                 <button
                   onClick={() => setIsClearModalOpen(true)}
                   className="flex items-center gap-2 text-red-400 hover:text-red-300 bg-red-400/10 hover:bg-red-400/20 px-4 py-1.5 rounded-xl text-sm font-semibold transition-colors border border-red-400/20"
@@ -239,13 +119,13 @@ function BandejaContent() {
                 </button>
               )}
               <span className="bg-blue-500/10 text-blue-400 py-1.5 px-4 rounded-xl text-sm font-semibold border border-blue-500/20">
-                {filteredData.length} Sin Leer
+                {notificaciones.length} Sin Leer
               </span>
             </div>
           </div>
 
           <div className="divide-y divide-white/5">
-            {filteredData.length === 0 ? (
+            {notificaciones.length === 0 ? (
               <div className="p-16 text-center text-gray-400">
                 <MailOpen className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 <p className="font-semibold text-lg">¡Bandeja vacía!</p>
@@ -257,133 +137,30 @@ function BandejaContent() {
                   Ver historial de notificaciones leídas →
                 </button>
               </div>
-            ) : filteredData.map((notif: any) => (
-              <div
-                key={notif.id}
-                className="p-6 flex items-start gap-6 transition-colors hover:bg-white/[0.02] cursor-pointer bg-blue-500/[0.02]"
-                onClick={() => handleViewPdf(notif)}
-              >
-                <div className="pt-1">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
-                    <Mail className="w-5 h-5 text-blue-400" />
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <span className="font-semibold text-white">{notif.empresa.razonSocial}</span>
-                      <span className="text-xs font-mono bg-white/5 px-2 py-0.5 rounded text-gray-400 border border-white/5">
-                        RUC: {notif.empresa.ruc}
-                      </span>
-                      {notif.montoExigible && (
-                        <span className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
-                          <CircleDollarSign className="w-3.5 h-3.5" /> Deuda Exigible: {notif.montoExigible}
-                        </span>
-                      )}
-                      {notif.expedienteCoactivo && (
-                        <span className="text-xs font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
-                          <FileText className="w-3 h-3 text-amber-400" /> Exp: {notif.expedienteCoactivo}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
-                      <Clock className="w-3.5 h-3.5" />
-                      {new Date(notif.fechaMensaje).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                  <h4 className="text-lg mb-2 truncate text-blue-100 font-bold">{notif.asunto}</h4>
-                  <div className="flex flex-col gap-2 mt-2">
-                    {notif.estado === 'SIN_PDF' ? (
-                      <div className="flex items-center gap-3 text-amber-400/80 text-sm bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                        <span className="flex-1">PDF no disponible temporalmente en los servidores de SUNAT.</span>
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            setRetrying((prev) => ({ ...prev, [notif.id]: true }));
-                            try {
-                              const res = await api.post(`/scraper/retry-pdf/${notif.id}`, {}, { timeout: 120000 });
-                              if (res.data?.success) {
-                                fetchNotificaciones();
-                              } else {
-                                alert(res.data?.message || 'No se pudo recuperar el PDF desde SUNAT. Es posible que el documento haya expirado.');
-                              }
-                            } catch (err: any) {
-                              alert('No se pudo recuperar el PDF en este momento. Inténtalo más tarde.');
-                            } finally {
-                              setRetrying((prev) => ({ ...prev, [notif.id]: false }));
-                            }
-                          }}
-                          disabled={retrying[notif.id]}
-                          className="flex items-center gap-1.5 text-xs font-semibold text-amber-300 hover:text-amber-200 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 ${retrying[notif.id] ? 'animate-spin' : ''}`} />
-                          {retrying[notif.id] ? 'Reintentando...' : '🔄 Reintentar PDF'}
-                        </button>
-                      </div>
-                    ) : notif.rutaArchivoPdf ? (
-                      <span className="flex items-center gap-2 text-sm font-medium text-blue-400">
-                        <FileText className="w-4 h-4" /> Click para ver el documento PDF
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            ))}
+            ) : (
+              notificaciones.map((notif) => (
+                <NotificationItem
+                  key={notif.id}
+                  notificacion={notif}
+                  mode="inbox"
+                  retrying={retrying[notif.id]}
+                  onClick={() => handleViewPdf(notif)}
+                  onRetryPdf={(e) => {
+                    e.stopPropagation();
+                    retryPdf(notif.id);
+                  }}
+                />
+              ))
+            )}
           </div>
 
-          {/* Pagination Controls */}
-          {meta.lastPage > 1 && (
-            <div className="p-4 border-t border-white/5 flex items-center justify-between bg-white/[0.02]">
-              <div className="text-sm text-gray-400">
-                Mostrando página <span className="text-white font-medium">{meta.page}</span> de <span className="text-white font-medium">{meta.lastPage}</span>
-                {' '}({meta.total} notificaciones)
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={meta.page <= 1}
-                  className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Anterior
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(meta.lastPage, p + 1))}
-                  disabled={meta.page >= meta.lastPage}
-                  className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* PDF Viewer */}
-      {selectedPdf && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="bg-[#111827] border border-white/10 rounded-3xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-[#1f2937]/50">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
-                  <FileIcon className="w-4 h-4 text-blue-400" />
-                </div>
-                <h3 className="font-bold text-white">Visor de Resolución SUNAT</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <a href={selectedPdf} target="_blank" rel="noreferrer" className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors">
-                  <ExternalIcon className="w-5 h-5" />
-                </a>
-                <button onClick={() => setSelectedPdf(null)} className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-xl transition-colors">
-                  <XIcon className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 bg-gray-900 p-2">
-              <iframe src={selectedPdf} className="w-full h-full rounded-xl border border-white/5" title="Visor PDF" />
-            </div>
-          </div>
+          <PaginationControls
+            currentPage={meta.page}
+            totalPages={meta.lastPage}
+            totalItems={meta.total}
+            itemLabel="notificaciones"
+            onPageChange={setPage}
+          />
         </div>
       )}
 
@@ -396,7 +173,10 @@ function BandejaContent() {
       <ConfirmModal
         isOpen={isClearModalOpen}
         onClose={() => setIsClearModalOpen(false)}
-        onConfirm={async () => { await clearInbox(); setIsClearModalOpen(false); }}
+        onConfirm={async () => {
+          await clearInbox();
+          setIsClearModalOpen(false);
+        }}
         title="¿Limpiar Bandeja?"
         message="¿Estás seguro de eliminar todas las notificaciones? Esta acción borrará los registros de forma irreversible."
       />

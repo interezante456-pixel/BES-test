@@ -1,125 +1,56 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
-import { FileText as FileIcon, Search as SearchIcon, X as XIcon, ExternalLink as ExternalIcon, MailOpen, Clock, FileText, AlertTriangle, Archive, Trash2, CheckSquare, Square, CircleDollarSign } from 'lucide-react';
-import api from '@/lib/api';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useState, Suspense } from 'react';
+import { Archive, Trash2, CheckSquare, Square } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { PdfViewerDrawer } from '../components/PdfViewerDrawer';
+import { PaginationControls } from '@/components/PaginationControls';
+import { NotificationFilterBar } from '../components/NotificationFilterBar';
+import { NotificationItem } from '../components/NotificationItem';
+import { useNotificationList } from '../hooks/useNotificationList';
 
 function ArchivoContent() {
-  const [notificaciones, setNotificaciones] = useState<any[]>([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, lastPage: 1 });
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [selectedNotificacionForPdf, setSelectedNotificacionForPdf] = useState<any | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // id de notif a eliminar individual
-  const [selectedIds, setSelectedIds] = useState<string[]>([]); // ids seleccionados para borrado masivo
+  const {
+    notificaciones,
+    meta,
+    page,
+    loading,
+    searchTerm,
+    startDate,
+    endDate,
+    selectedIds,
+    allSelected,
+    canDelete,
+    setPage,
+    setSearchTerm,
+    setStartDate,
+    setEndDate,
+    getPdfUrl,
+    deleteNotification,
+    bulkDeleteNotifications,
+    toggleSelectAll,
+    toggleSelectOne,
+    clearFilters,
+  } = useNotificationList({
+    endpoint: '/notificaciones/archivo',
+  });
+
+  const [selectedNotifForPdf, setSelectedNotifForPdf] = useState<any | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
-
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const user = useAuthStore((state) => state.user);
-  const canDelete = user?.rol === 'SUPER_ADMIN' || user?.rol === 'ADMIN';
-
-  const fetchNotificaciones = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '50',
-      });
-      if (searchTerm) params.append('search', searchTerm);
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
-
-      const res = await api.get(`/notificaciones/archivo?${params.toString()}`);
-      setNotificaciones(res.data.data);
-      setMeta(res.data.meta);
-      setSelectedIds([]); // Clear selection on page/filter change
-    } catch (error) {
-      console.error("Error loading notifications", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, searchTerm, startDate, endDate]);
-
-  useEffect(() => {
-    if (isAuthenticated) fetchNotificaciones();
-  }, [isAuthenticated, fetchNotificaciones]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, startDate, endDate]);
-
-  const getPdfUrl = (ruta: string | null | undefined): string | null => {
-    if (!ruta) return null;
-    const fileName = ruta.split('/uploads/').pop();
-    if (!fileName) return null;
-    if (typeof window !== 'undefined' && window.location.port === '3500') {
-      return `${window.location.protocol}//${window.location.hostname}:4000/uploads/${fileName}`;
-    }
-    return `/uploads/${fileName}`;
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await api.delete(`/notificaciones/${id}`);
-      setNotificaciones(prev => prev.filter(n => n.id !== id));
-      setSelectedIds(prev => prev.filter(item => item !== id));
-    } catch (error) {
-      console.error("Error deleting notification", error);
-    } finally {
-      setDeleteTarget(null);
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
-    try {
-      await api.post('/notificaciones/bulk-delete', { ids: selectedIds });
-      setNotificaciones(prev => prev.filter(n => !selectedIds.includes(n.id)));
-      setSelectedIds([]);
-    } catch (error) {
-      console.error("Error bulk deleting notifications", error);
-    } finally {
-      setShowBulkConfirm(false);
-    }
-  };
-
-  // Client-side filtering is no longer needed, the server handles it.
-  const filteredData = notificaciones;
-
-  const allFilteredSelected = filteredData.length > 0 && filteredData.every(n => selectedIds.includes(n.id));
-
-  const toggleSelectAll = () => {
-    if (allFilteredSelected) {
-      const filteredIds = filteredData.map(n => n.id);
-      setSelectedIds(prev => prev.filter(id => !filteredIds.includes(id)));
-    } else {
-      const newIds = new Set([...selectedIds, ...filteredData.map(n => n.id)]);
-      setSelectedIds(Array.from(newIds));
-    }
-  };
-
-  const toggleSelectOne = (id: string) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
-  };
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-3">
             <Archive className="w-7 h-7 text-gray-400" />
             Archivo
           </h2>
-          <p className="text-gray-400 text-sm mt-1">Historial de todas las notificaciones procesadas y leídas.</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Historial de todas las notificaciones procesadas y leídas.
+          </p>
         </div>
         <span className="text-xs font-semibold text-gray-500 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
           {meta.total} registros en total
@@ -127,101 +58,32 @@ function ArchivoContent() {
       </div>
 
       {/* Search & Date Filters */}
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#111827] p-4 rounded-3xl border border-white/5">
-          {/* Buscador de Texto (6 columnas) */}
-          <div className="md:col-span-6 flex items-center gap-3 bg-white/[0.02] px-4 py-1.5 rounded-2xl border border-white/5">
-            <SearchIcon className="text-gray-500 w-5 h-5 flex-shrink-0" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por RUC, Empresa o Asunto..."
-              className="flex-1 bg-transparent border-none text-white outline-none placeholder-gray-500 py-2 text-sm"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="p-1.5 text-gray-500 hover:text-white rounded-lg transition-colors"
-              >
-                <XIcon className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Input Fecha Desde (3 columnas) */}
-          <div className="md:col-span-3 flex items-center gap-2 bg-white/[0.02] px-4 py-1.5 rounded-2xl border border-white/5">
-            <span className="text-xs text-gray-500 font-semibold uppercase flex-shrink-0">Desde:</span>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="flex-1 bg-transparent border-none text-white outline-none text-sm [color-scheme:dark] cursor-pointer"
-            />
-            {startDate && (
-              <button
-                onClick={() => setStartDate('')}
-                className="p-1 text-gray-500 hover:text-white rounded-lg transition-colors"
-              >
-                <XIcon className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Input Fecha Hasta (3 columnas) */}
-          <div className="md:col-span-3 flex items-center gap-2 bg-white/[0.02] px-4 py-1.5 rounded-2xl border border-white/5">
-            <span className="text-xs text-gray-500 font-semibold uppercase flex-shrink-0">Hasta:</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="flex-1 bg-transparent border-none text-white outline-none text-sm [color-scheme:dark] cursor-pointer"
-            />
-            {endDate && (
-              <button
-                onClick={() => setEndDate('')}
-                className="p-1 text-gray-500 hover:text-white rounded-lg transition-colors"
-              >
-                <XIcon className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Botones de acción de filtros activos */}
-        {(searchTerm || startDate || endDate) && (
-          <div className="flex items-center justify-end gap-3">
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                setStartDate('');
-                setEndDate('');
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl font-medium text-xs transition-colors border border-white/5"
-            >
-              <XIcon className="w-3.5 h-3.5" />
-              Limpiar Filtros
-            </button>
-          </div>
-        )}
-      </div>
+      <NotificationFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        startDate={startDate}
+        onStartDateChange={setStartDate}
+        endDate={endDate}
+        onEndDateChange={setEndDate}
+        onClearFilters={clearFilters}
+      />
 
       {/* Toolbar para Selección Múltiple y Borrado Masivo (ADMIN / SUPER_ADMIN) */}
-      {canDelete && filteredData.length > 0 && (
+      {canDelete && notificaciones.length > 0 && (
         <div className="flex items-center justify-between bg-[#111827] px-6 py-3.5 rounded-2xl border border-white/5 shadow-sm">
           <div className="flex items-center gap-3">
             <button
               onClick={toggleSelectAll}
               className="flex items-center gap-2 text-xs font-semibold text-gray-300 hover:text-white transition-colors"
             >
-              {allFilteredSelected ? (
+              {allSelected ? (
                 <CheckSquare className="w-4 h-4 text-blue-500" />
               ) : (
                 <Square className="w-4 h-4 text-gray-500" />
               )}
               <span>
                 {selectedIds.length > 0
-                  ? `${selectedIds.length} seleccionado(s) de ${filteredData.length}`
+                  ? `${selectedIds.length} seleccionado(s) de ${notificaciones.length}`
                   : 'Seleccionar todo'}
               </span>
             </button>
@@ -245,160 +107,65 @@ function ArchivoContent() {
       ) : (
         <div className="bg-[#111827] rounded-3xl border border-white/5 overflow-hidden">
           <div className="divide-y divide-white/5">
-            {filteredData.length === 0 ? (
+            {notificaciones.length === 0 ? (
               <div className="p-16 text-center text-gray-400">
                 <Archive className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 <p className="font-semibold text-lg">El archivo está vacío</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  {searchTerm ? 'No se encontraron resultados.' : 'Las notificaciones leídas aparecerán aquí.'}
+                  {searchTerm
+                    ? 'No se encontraron resultados.'
+                    : 'Las notificaciones leídas aparecerán aquí.'}
                 </p>
               </div>
-            ) : filteredData.map((notif: any) => {
-              const isSelected = selectedIds.includes(notif.id);
-              return (
-                <div
+            ) : (
+              notificaciones.map((notif) => (
+                <NotificationItem
                   key={notif.id}
-                  className={`p-6 flex items-start gap-4 sm:gap-6 transition-colors hover:bg-white/[0.02] group ${
-                    isSelected ? 'bg-blue-500/[0.04]' : ''
-                  }`}
-                >
-                  {/* Checkbox de Selección Masiva (solo ADMIN y SUPER_ADMIN) */}
-                  {canDelete && (
-                    <div className="pt-2.5 flex-shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSelectOne(notif.id);
-                        }}
-                        className="text-gray-500 hover:text-white transition-colors"
-                        title={isSelected ? "Deseleccionar" : "Seleccionar"}
-                      >
-                        {isSelected ? (
-                          <CheckSquare className="w-5 h-5 text-blue-500" />
-                        ) : (
-                          <Square className="w-5 h-5 text-gray-600 group-hover:text-gray-400" />
-                        )}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Icono */}
-                  <div className="pt-1 flex-shrink-0">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border ${
-                      notif.estado === 'SIN_PDF'
-                        ? 'bg-amber-500/10 border-amber-500/20'
-                        : 'bg-gray-800 border-white/10'
-                    }`}>
-                      <MailOpen className={`w-5 h-5 ${notif.estado === 'SIN_PDF' ? 'text-amber-400' : 'text-gray-500'}`} />
-                    </div>
-                  </div>
-
-                  {/* Contenido */}
-                  <div
-                    className="flex-1 min-w-0 cursor-pointer"
-                    onClick={() => {
-                      setSelectedNotificacionForPdf({
-                        ...notif,
-                        rutaArchivoPdf: getPdfUrl(notif.rutaArchivoPdf),
-                      });
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="font-semibold text-gray-300">{notif.empresa.razonSocial}</span>
-                        <span className="text-xs font-mono bg-white/5 px-2 py-0.5 rounded text-gray-500 border border-white/5">
-                          RUC: {notif.empresa.ruc}
-                        </span>
-                        {notif.montoExigible && (
-                          <span className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
-                            <CircleDollarSign className="w-3.5 h-3.5" /> Deuda Exigible: {notif.montoExigible}
-                          </span>
-                        )}
-                        {notif.expedienteCoactivo && (
-                          <span className="text-xs font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
-                            <FileText className="w-3 h-3 text-amber-400" /> Exp: {notif.expedienteCoactivo}
-                          </span>
-                        )}
-                        {notif.estado === 'SIN_PDF' && (
-                          <span className="text-xs font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-md">
-                            SIN PDF
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
-                        <Clock className="w-3.5 h-3.5" />
-                        {new Date(notif.fechaMensaje).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </div>
-                    </div>
-                    <h4 className="text-base mb-1 truncate text-gray-400 font-medium">{notif.asunto}</h4>
-                    {notif.rutaArchivoPdf && (
-                      <span className="flex items-center gap-2 text-sm font-medium text-indigo-400/70">
-                        <FileText className="w-4 h-4" /> Ver PDF →
-                      </span>
-                    )}
-                    {notif.estado === 'SIN_PDF' && (
-                      <div className="flex items-center gap-2 text-amber-400/70 text-xs mt-1">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        PDF no disponible en servidores SUNAT
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Botón eliminar individual — solo ADMIN y SUPER_ADMIN */}
-                  {canDelete && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(notif.id); }}
-                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-2 rounded-xl text-gray-600 hover:text-red-400 hover:bg-red-400/10 border border-transparent hover:border-red-400/20 transition-all"
-                      title="Eliminar notificación"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+                  notificacion={notif}
+                  mode="archive"
+                  isSelected={selectedIds.includes(notif.id)}
+                  canSelect={canDelete}
+                  canDelete={canDelete}
+                  onSelect={() => toggleSelectOne(notif.id)}
+                  onClick={() =>
+                    setSelectedNotifForPdf({
+                      ...notif,
+                      rutaArchivoPdf: getPdfUrl(notif.rutaArchivoPdf),
+                    })
+                  }
+                  onDelete={() => setDeleteTarget(notif.id)}
+                />
+              ))
+            )}
           </div>
 
-          {/* Pagination Controls */}
-          {meta.lastPage > 1 && (
-            <div className="p-4 border-t border-white/5 flex items-center justify-between bg-white/[0.02]">
-              <div className="text-sm text-gray-400">
-                Mostrando página <span className="text-white font-medium">{meta.page}</span> de <span className="text-white font-medium">{meta.lastPage}</span>
-                {' '}({meta.total} notificaciones)
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={meta.page <= 1}
-                  className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Anterior
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(meta.lastPage, p + 1))}
-                  disabled={meta.page >= meta.lastPage}
-                  className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
-          )}
+          <PaginationControls
+            currentPage={meta.page}
+            totalPages={meta.lastPage}
+            totalItems={meta.total}
+            itemLabel="notificaciones"
+            onPageChange={setPage}
+          />
         </div>
       )}
 
-      {/* Visor de PDF Centrado (Igual que en Bandeja de Entrada) */}
+      {/* Visor de PDF */}
       <PdfViewerDrawer
-        isOpen={!!selectedNotificacionForPdf}
-        onClose={() => setSelectedNotificacionForPdf(null)}
-        notificacion={selectedNotificacionForPdf}
+        isOpen={!!selectedNotifForPdf}
+        onClose={() => setSelectedNotifForPdf(null)}
+        notificacion={selectedNotifForPdf}
       />
 
       {/* Modal Confirmar Eliminación Individual */}
       <ConfirmModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
+        onConfirm={async () => {
+          if (deleteTarget) {
+            await deleteNotification(deleteTarget);
+            setDeleteTarget(null);
+          }
+        }}
         title="¿Eliminar notificación?"
         message="Se eliminará esta notificación y su PDF del sistema de forma permanente. Esta acción no se puede deshacer."
       />
@@ -407,7 +174,10 @@ function ArchivoContent() {
       <ConfirmModal
         isOpen={showBulkConfirm}
         onClose={() => setShowBulkConfirm(false)}
-        onConfirm={handleBulkDelete}
+        onConfirm={async () => {
+          await bulkDeleteNotifications();
+          setShowBulkConfirm(false);
+        }}
         title={`¿Eliminar ${selectedIds.length} notificación(es)?`}
         message={`Se eliminarán permanentemente las ${selectedIds.length} notificaciones seleccionadas y sus archivos PDF asociados. Esta acción no se puede deshacer.`}
       />

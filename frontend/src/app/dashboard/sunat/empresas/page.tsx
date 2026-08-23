@@ -1,12 +1,14 @@
 "use client";
+
 import { useState, useRef } from 'react';
-import { Building2, Plus, Search, RefreshCw, Download, Upload, X, ShieldAlert } from 'lucide-react';
+import { Plus, Search, RefreshCw, Download, Upload } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
+import { ExcelImportModal } from '@/components/ExcelImportModal';
+import { exportToExcel, readExcelFile, getVal } from '@/lib/excelUtils';
 import { useEmpresas } from '../../empresas/hooks/useEmpresas';
 import { EmpresaTable } from '../../empresas/components/EmpresaTable';
 import { EmpresaFormModal } from '../../empresas/components/EmpresaFormModal';
 import { SunatLoginModal } from '../../empresas/components/SunatLoginModal';
-import * as XLSX from 'xlsx';
 
 export default function SunatEmpresasPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,15 +36,16 @@ export default function SunatEmpresasPage() {
     toggleEmpresaActivo,
     deleteEmpresa,
     saveEmpresa,
-    user
+    user,
   } = useEmpresas();
 
   // Filtrar solo las empresas habilitadas para SUNAT
-  const sunatEmpresas = empresas.filter(emp => emp.habilitadoSunat !== false);
+  const sunatEmpresas = empresas.filter((emp) => emp.habilitadoSunat !== false);
 
-  const filteredEmpresas = sunatEmpresas.filter(emp => 
-    emp.razonSocial.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    emp.ruc.includes(searchTerm)
+  const filteredEmpresas = sunatEmpresas.filter(
+    (emp) =>
+      emp.razonSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.ruc.includes(searchTerm)
   );
 
   const handleOpenSunat = (empresa: any) => {
@@ -61,7 +64,7 @@ export default function SunatEmpresasPage() {
   };
 
   const handleExport = () => {
-    const data = sunatEmpresas.map(emp => {
+    const data = sunatEmpresas.map((emp) => {
       const row: any = {
         'Razón Social': emp.razonSocial,
         'RUC': emp.ruc,
@@ -78,46 +81,29 @@ export default function SunatEmpresasPage() {
       row['Total Notificaciones'] = emp._count?.notificaciones ?? 0;
       return row;
     });
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Empresas_SUNAT');
-    XLSX.writeFile(wb, `SUNAT_Empresas_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    exportToExcel(data, 'Empresas_SUNAT', 'SUNAT_Empresas');
   };
 
-  const getVal = (row: any, ...keys: string[]) => {
-    if (!row) return '';
-    const rowKeys = Object.keys(row);
-    for (const k of keys) {
-      if (row[k] !== undefined && row[k] !== null) return String(row[k]).trim();
-      const foundKey = rowKeys.find(
-        (rk) => rk.trim().toLowerCase() === k.trim().toLowerCase()
-      );
-      if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
-        return String(row[foundKey]).trim();
-      }
-    }
-    return '';
-  };
-
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const data = evt.target?.result;
-      const wb = XLSX.read(data, { type: 'array', raw: false });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    try {
+      const rows = await readExcelFile(file);
       setImportPreview(rows);
       setIsImportModalOpen(true);
-    };
-    reader.readAsArrayBuffer(file);
-    e.target.value = '';
+    } catch (err) {
+      console.error('Error reading excel file:', err);
+      alert('Error al leer el archivo Excel.');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleConfirmImport = async () => {
     setImporting(true);
-    let success = 0, errors = 0;
+    let success = 0;
+    let errors = 0;
     const errorDetails: string[] = [];
 
     for (const row of importPreview) {
@@ -129,8 +115,12 @@ export default function SunatEmpresasPage() {
       const sunatVal = getVal(row, 'SUNAT');
       const sunafilVal = getVal(row, 'SUNAFIL');
 
-      const habilitadoSunat = sunatVal ? (sunatVal.toUpperCase() === 'SI' || sunatVal.toUpperCase() === 'TRUE') : true;
-      const habilitadoSunafil = sunafilVal ? (sunafilVal.toUpperCase() === 'SI' || sunafilVal.toUpperCase() === 'TRUE') : false;
+      const habilitadoSunat = sunatVal
+        ? sunatVal.toUpperCase() === 'SI' || sunatVal.toUpperCase() === 'TRUE'
+        : true;
+      const habilitadoSunafil = sunafilVal
+        ? sunafilVal.toUpperCase() === 'SI' || sunafilVal.toUpperCase() === 'TRUE'
+        : false;
 
       if (!ruc || !razonSocial || !usuarioSol || !claveSol) {
         errors++;
@@ -160,7 +150,10 @@ export default function SunatEmpresasPage() {
     setImportPreview([]);
 
     if (errorDetails.length > 0) {
-      alert(`Importación finalizada.\n\n✅ Exitosas: ${success}\n❌ Errores: ${errors}\n\nDetalles:\n` + errorDetails.slice(0, 8).join('\n'));
+      alert(
+        `Importación finalizada.\n\n✅ Exitosas: ${success}\n❌ Errores: ${errors}\n\nDetalles:\n` +
+          errorDetails.slice(0, 8).join('\n')
+      );
     } else {
       alert(`✅ Importación completada con éxito: ${success} empresas registradas/actualizadas.`);
     }
@@ -178,7 +171,8 @@ export default function SunatEmpresasPage() {
             </span>
           </div>
           <p className="text-gray-400 text-xs mt-1">
-            Administra las credenciales Clave SOL y sincronización de tus <strong className="text-emerald-400">{sunatEmpresas.length}</strong> empresas en SUNAT.
+            Administra las credenciales Clave SOL y sincronización de tus{' '}
+            <strong className="text-emerald-400">{sunatEmpresas.length}</strong> empresas en SUNAT.
           </p>
         </div>
 
@@ -191,20 +185,26 @@ export default function SunatEmpresasPage() {
             className="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-200 px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all disabled:opacity-40 whitespace-nowrap"
             title="Exportar a Excel"
           >
-            <Download className="w-4 h-4 text-gray-400" /> 
+            <Download className="w-4 h-4 text-gray-400" />
             <span>Exportar</span>
           </button>
 
           {/* Importar */}
           {(user?.rol === 'SUPER_ADMIN' || user?.rol === 'ADMIN') && (
             <>
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportFile} />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleImportFile}
+              />
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-200 px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all whitespace-nowrap"
                 title="Importar desde Excel"
               >
-                <Upload className="w-4 h-4 text-gray-400" /> 
+                <Upload className="w-4 h-4 text-gray-400" />
                 <span>Importar</span>
               </button>
             </>
@@ -226,7 +226,7 @@ export default function SunatEmpresasPage() {
               onClick={openNewModal}
               className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-lg shadow-blue-500/20 transition-all whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" /> 
+              <Plus className="w-4 h-4" />
               <span>Nueva Empresa</span>
             </button>
           )}
@@ -246,24 +246,31 @@ export default function SunatEmpresasPage() {
       </div>
 
       {/* Tabla de Empresas */}
-      <EmpresaTable
-        empresas={filteredEmpresas}
-        userRol={user?.rol}
-        syncingEmpresas={syncingEmpresas}
-        onSync={handleSync}
-        onEdit={handleEdit}
-        onOpenSunat={handleOpenSunat}
-        onToggleActivo={(empresa) => {
-          setEmpresaToToggle(empresa);
-          setIsToggleModalOpen(true);
-        }}
-        onDelete={(id) => {
-          setEmpresaToDelete(id);
-          setIsDeleteModalOpen(true);
-        }}
-      />
+      {loading ? (
+        <div className="bg-[#111827] border border-white/5 rounded-3xl p-12 text-center text-gray-500">
+          <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-400" />
+          Cargando empresas SUNAT...
+        </div>
+      ) : (
+        <EmpresaTable
+          empresas={filteredEmpresas}
+          syncingEmpresas={syncingEmpresas}
+          onSync={handleSync}
+          onOpenSunat={handleOpenSunat}
+          onEdit={handleEdit}
+          onDelete={(id) => {
+            setEmpresaToDelete(id);
+            setIsDeleteModalOpen(true);
+          }}
+          onToggleActivo={(emp) => {
+            setEmpresaToToggle(emp);
+            setIsToggleModalOpen(true);
+          }}
+          userRol={user?.rol}
+        />
+      )}
 
-      {/* Modal Formulario */}
+      {/* Modales */}
       <EmpresaFormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -272,11 +279,20 @@ export default function SunatEmpresasPage() {
         defaultEntidad="SUNAT"
       />
 
-      {/* Modal Autollenado SUNAT */}
       <SunatLoginModal
         isOpen={isSunatModalOpen}
         onClose={() => setIsSunatModalOpen(false)}
         empresa={sunatEmpresa}
+      />
+
+      {/* Modal Importación Excel */}
+      <ExcelImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        previewRows={importPreview}
+        entidad="SUNAT"
+        importing={importing}
+        onConfirm={handleConfirmImport}
       />
 
       {/* Modal Confirmar Eliminar */}
@@ -299,17 +315,17 @@ export default function SunatEmpresasPage() {
         }}
       />
 
-      {/* Modal Pausar / Reactivar Monitoreo */}
+      {/* Modal Confirmar Pausar / Reactivar Sincronización */}
       <ConfirmModal
         isOpen={isToggleModalOpen}
-        title={empresaToToggle?.activo ? "¿Desactivar Monitoreo?" : "¿Activar Monitoreo?"}
+        title={empresaToToggle?.activo ? '¿Pausar sincronización?' : '¿Reactivar sincronización?'}
         message={
           empresaToToggle?.activo
-            ? `Al pausar ${empresaToToggle?.razonSocial}, el robot dejará de consultar sus notificaciones automáticamente.`
-            : `Al reactivar ${empresaToToggle?.razonSocial}, volverá a sincronizarse en las tareas programadas.`
+            ? `La empresa "${empresaToToggle?.razonSocial}" dejará de consultarse automáticamente por el robot.`
+            : `La empresa "${empresaToToggle?.razonSocial}" volverá a ser incluida en las consultas periódicas.`
         }
-        confirmText={empresaToToggle?.activo ? "Pausar Monitoreo" : "Reanudar Monitoreo"}
-        confirmVariant={empresaToToggle?.activo ? "warning" : "primary"}
+        confirmText={empresaToToggle?.activo ? 'Pausar Empresa' : 'Reactivar Empresa'}
+        confirmVariant={empresaToToggle?.activo ? 'warning' : 'primary'}
         onConfirm={async () => {
           if (empresaToToggle) {
             await toggleEmpresaActivo(empresaToToggle.id, !empresaToToggle.activo);
@@ -322,79 +338,6 @@ export default function SunatEmpresasPage() {
           setEmpresaToToggle(null);
         }}
       />
-
-      {/* Modal Previsualización de Importación */}
-      {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#111827] border border-white/10 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-white">Previsualización de Importación — SUNAT</h3>
-                <p className="text-xs text-gray-400">Se encontraron {importPreview.length} registros en el archivo Excel.</p>
-              </div>
-              <button
-                onClick={() => setIsImportModalOpen(false)}
-                className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto flex-1 space-y-4">
-              <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl text-xs text-emerald-300">
-                ✅ Las empresas importadas se registrarán como activas en <strong>SUNAT (Buzón SOL)</strong>. Si alguna ya existía, conservará sus notificaciones y actualizará sus datos.
-              </div>
-
-              <div className="border border-white/5 rounded-2xl overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-white/5 text-gray-400 font-bold border-b border-white/5">
-                    <tr>
-                      <th className="p-3">#</th>
-                      <th className="p-3">Razón Social</th>
-                      <th className="p-3">RUC</th>
-                      <th className="p-3">Usuario SOL</th>
-                      <th className="p-3">Clave SOL</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 text-gray-300">
-                    {importPreview.slice(0, 10).map((row, idx) => (
-                      <tr key={idx} className="hover:bg-white/[0.02]">
-                        <td className="p-3 text-gray-500">{idx + 1}</td>
-                        <td className="p-3 font-semibold text-white">{getVal(row, 'Razón Social', 'Razon Social', 'Empresa', 'Nombre') || <span className="text-red-400 italic">Requerido</span>}</td>
-                        <td className="p-3 font-mono">{getVal(row, 'RUC', 'Ruc') || <span className="text-red-400 italic">Requerido</span>}</td>
-                        <td className="p-3 font-mono">{getVal(row, 'Usuario SOL', 'Usuario Sol', 'Usuario') || <span className="text-red-400 italic">Requerido</span>}</td>
-                        <td className="p-3 font-mono">{getVal(row, 'Clave SOL', 'Clave Sol', 'Clave') ? '••••••••' : <span className="text-red-400 italic">Requerido</span>}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {importPreview.length > 10 && (
-                <p className="text-center text-xs text-gray-500 italic">... y {importPreview.length - 10} filas más.</p>
-              )}
-            </div>
-
-            <div className="p-6 border-t border-white/5 flex items-center justify-end gap-3 bg-white/[0.01]">
-              <button
-                type="button"
-                onClick={() => setIsImportModalOpen(false)}
-                className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl font-semibold text-sm transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmImport}
-                disabled={importing}
-                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 flex items-center gap-2"
-              >
-                {importing && <RefreshCw className="w-4 h-4 animate-spin" />}
-                {importing ? 'Importando...' : `Confirmar Importación (${importPreview.length})`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
