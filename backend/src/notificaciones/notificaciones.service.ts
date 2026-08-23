@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { PdfParserService } from '../scraper/pdf-parser.service';
+import { PdfParserService } from '../scraper/shared/pdf-parser.service';
 import { EmpresaAccessService } from '../common/empresa-access.service';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -238,5 +238,156 @@ export class NotificacionesService implements OnModuleInit {
     return this.prisma.notificacion.deleteMany({
       where: { id: { in: ids } },
     });
+  }
+
+  /** SUNAFIL: Consulta especializada de notificaciones laborales */
+  async findSunafilNotificaciones(usuarioId: string, rol: string, filters: any = {}) {
+    const empresaIds = await this.getEmpresaIds(usuarioId, rol);
+    if (empresaIds.length === 0) return { data: [], meta: { total: 0, page: 1, lastPage: 1 } };
+
+    const {
+      page = 1,
+      limit = 50,
+      empresa,
+      modulo,
+      search,
+      startDate,
+      endDate,
+      estado,
+    } = filters;
+
+    const skip = (page - 1) * limit;
+
+    const whereParams: any = {
+      empresaId: { in: empresaIds },
+      origen: 'SUNAFIL',
+    };
+
+    if (empresa && empresa !== 'all') {
+      whereParams.empresaId = empresa;
+    }
+
+    if (modulo && modulo !== 'ALL') {
+      whereParams.moduloSunafil = modulo;
+    }
+
+    if (estado && estado !== 'ALL') {
+      whereParams.estado = estado;
+    }
+
+    if (search) {
+      whereParams.OR = [
+        { asunto: { contains: search, mode: 'insensitive' } },
+        { codigoReferencia: { contains: search, mode: 'insensitive' } },
+        { intendencia: { contains: search, mode: 'insensitive' } },
+        { empresa: { razonSocial: { contains: search, mode: 'insensitive' } } },
+        { empresa: { ruc: { contains: search } } },
+      ];
+    }
+
+    if (startDate || endDate) {
+      whereParams.fechaMensaje = {};
+      if (startDate) whereParams.fechaMensaje.gte = new Date(`${startDate}T00:00:00.000Z`);
+      if (endDate) whereParams.fechaMensaje.lte = new Date(`${endDate}T23:59:59.999Z`);
+    }
+
+    const [total, data] = await Promise.all([
+      this.prisma.notificacion.count({ where: whereParams }),
+      this.prisma.notificacion.findMany({
+        where: whereParams,
+        include: {
+          empresa: {
+            select: { id: true, razonSocial: true, ruc: true },
+          },
+        },
+        orderBy: [{ createdAt: 'desc' }],
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  /** SUNAFIL: Métricas agregadas por módulo y plazos */
+  async getSunafilMetricas(usuarioId: string, rol: string, empresaId?: string) {
+    const empresaIds = await this.getEmpresaIds(usuarioId, rol);
+    if (empresaIds.length === 0) {
+      return {
+        total: 0,
+        fiscalizacion: 0,
+        cobranza: 0,
+        accionesPrevias: 0,
+        formalizacion: 0,
+        sst: 0,
+        porVencer: 0,
+      };
+    }
+
+    const baseWhere: any = {
+      empresaId: { in: empresaIds },
+      origen: 'SUNAFIL',
+    };
+
+    if (empresaId && empresaId !== 'all') {
+      baseWhere.empresaId = empresaId;
+    }
+
+    const now = new Date();
+    const in7Days = new Date();
+    in7Days.setDate(now.getDate() + 7);
+
+    const [
+      total,
+      fiscalizacion,
+      cobranza,
+      accionesPrevias,
+      formalizacion,
+      sst,
+      porVencer,
+    ] = await Promise.all([
+      this.prisma.notificacion.count({ where: baseWhere }),
+      this.prisma.notificacion.count({
+        where: { ...baseWhere, moduloSunafil: 'FISCALIZACION' },
+      }),
+      this.prisma.notificacion.count({
+        where: { ...baseWhere, moduloSunafil: 'COBRANZA' },
+      }),
+      this.prisma.notificacion.count({
+        where: { ...baseWhere, moduloSunafil: 'ACCIONES_PREVIAS' },
+      }),
+      this.prisma.notificacion.count({
+        where: { ...baseWhere, moduloSunafil: 'ALERTAS_FORMALIZACION' },
+      }),
+      this.prisma.notificacion.count({
+        where: { ...baseWhere, moduloSunafil: 'ALERTAS_SST' },
+      }),
+      this.prisma.notificacion.count({
+        where: {
+          ...baseWhere,
+          fechaLimite: {
+            gte: now,
+            lte: in7Days,
+          },
+        },
+      }),
+    ]);
+
+    return {
+      total,
+      fiscalizacion,
+      cobranza,
+      accionesPrevias,
+      formalizacion,
+      sst,
+      porVencer,
+    };
   }
 }

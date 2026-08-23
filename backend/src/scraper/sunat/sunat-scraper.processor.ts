@@ -1,19 +1,19 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
-import { ScraperService } from './scraper.service';
-import { EventsGateway } from '../events/events.gateway';
+import { SunatScraperService } from './sunat-scraper.service';
+import { EventsGateway } from '../../events/events.gateway';
 
 @Processor('sunat-scraper-queue', {
   concurrency: 1,
   lockDuration: 300000, // 5 minutos (evita 'stalled' si Puppeteer es lento)
   maxStalledCount: 10, // Intentar retomar el job más veces si falla el proceso
 })
-export class ScraperProcessor extends WorkerHost {
-  private readonly logger = new Logger(ScraperProcessor.name);
+export class SunatScraperProcessor extends WorkerHost {
+  private readonly logger = new Logger(SunatScraperProcessor.name);
 
   constructor(
-    private readonly scraperService: ScraperService,
+    private readonly scraperService: SunatScraperService,
     private readonly eventsGateway: EventsGateway,
   ) {
     super();
@@ -65,3 +65,6 @@ export class ScraperProcessor extends WorkerHost {
     }
   }
 }
+
+export { SunatScraperProcessor as ScraperProcessor };
+

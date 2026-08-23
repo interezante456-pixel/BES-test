@@ -13,8 +13,9 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma.service';
-import { ScraperService } from './scraper.service';
+import { SunatScraperService } from './sunat/sunat-scraper.service';
 import { CronService, ScheduleConfigDto } from './cron.service';
+import { SunafilScraperService } from './sunafil/sunafil-scraper.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('scraper')
@@ -22,8 +23,9 @@ export class ScraperController {
   constructor(
     @InjectQueue('sunat-scraper-queue') private scraperQueue: Queue,
     private prisma: PrismaService,
-    private scraperService: ScraperService,
+    private sunatScraperService: SunatScraperService,
     private cronService: CronService,
+    private sunafilScraperService: SunafilScraperService,
   ) {}
 
   @Get('schedule')
@@ -163,7 +165,7 @@ export class ScraperController {
     if (rol !== 'SUPER_ADMIN' && rol !== 'ADMIN') {
       throw new ForbiddenException('Solo administradores pueden ejecutar esta operación');
     }
-    return this.scraperService.fixCorruptAsuntos();
+    return this.sunatScraperService.fixCorruptAsuntos();
   }
 
   @Post('retry-pdf/:notificacionId')
@@ -175,6 +177,39 @@ export class ScraperController {
     if (rol !== 'SUPER_ADMIN' && rol !== 'ADMIN') {
       throw new ForbiddenException('Solo administradores pueden reintentar PDFs');
     }
-    return this.scraperService.retryPdf(notificacionId);
+    return this.sunatScraperService.retryPdf(notificacionId);
+  }
+
+  @Post('sync-sunafil/:empresaId')
+  async syncSunafil(
+    @Param('empresaId') empresaId: string,
+    @Request() req: any,
+  ) {
+    const { id: callerId, rol } = req.user;
+    let empresa: any = null;
+
+    if (rol === 'SUPER_ADMIN' || rol === 'ADMIN') {
+      empresa = await this.prisma.empresa.findFirst({
+        where: { id: empresaId },
+      });
+    } else {
+      const asignacion = await this.prisma.empresaAsignacion.findFirst({
+        where: { usuarioId: callerId, empresaId },
+        include: { empresa: true },
+      });
+      if (asignacion) empresa = asignacion.empresa;
+    }
+
+    if (!empresa) {
+      throw new ForbiddenException(
+        'Empresa no encontrada o no tienes permiso para sincronizarla',
+      );
+    }
+
+    // Ejecutar sincronización de SUNAFIL de forma asíncrona / directa
+    return this.sunafilScraperService.sincronizarEmpresa(empresaId, {
+      descargarPdfs: false,
+    });
   }
 }
+

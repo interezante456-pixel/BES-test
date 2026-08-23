@@ -1,18 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import puppeteer, { Page } from 'puppeteer';
-import { PrismaService } from '../prisma.service';
-import { EncryptionService } from '../encryption/encryption.service';
-import { MailService } from '../mail/mail.service';
-import { TelegramService } from '../mail/telegram.service';
-import { WhatsappService } from '../mail/whatsapp.service';
-import { PdfParserService } from './pdf-parser.service';
-import { isUrgentAsunto } from '../common/notificacion-classifier';
+import { PrismaService } from '../../prisma.service';
+import { EncryptionService } from '../../encryption/encryption.service';
+import { MailService } from '../../mail/mail.service';
+import { TelegramService } from '../../mail/telegram.service';
+import { WhatsappService } from '../../mail/whatsapp.service';
+import { PdfParserService } from '../shared/pdf-parser.service';
+import { isUrgentAsunto } from '../../common/notificacion-classifier';
 import * as fs from 'fs';
 import * as path from 'path';
 
 @Injectable()
-export class ScraperService {
-  private readonly logger = new Logger(ScraperService.name);
+export class SunatScraperService {
+  private readonly logger = new Logger(SunatScraperService.name);
 
   private readonly proxies = [];
 
@@ -1664,4 +1664,6 @@ if (fs.existsSync(filePath)) {
     }
   }
 }
+
+export { SunatScraperService as ScraperService };
 

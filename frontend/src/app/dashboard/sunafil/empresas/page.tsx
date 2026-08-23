@@ -12,9 +12,14 @@ import {
   Sparkles,
   Pencil,
   Trash2,
+  Power,
+  Clock,
+  KeyRound,
+  ShieldCheck,
 } from 'lucide-react';
 import { useEmpresas } from '../../empresas/hooks/useEmpresas';
 import { EmpresaFormModal } from '../../empresas/components/EmpresaFormModal';
+import { SunafilLoginModal } from '../../empresas/components/SunafilLoginModal';
 import { ExcelImportModal } from '@/components/ExcelImportModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import { exportToExcel, readExcelFile, getVal } from '@/lib/excelUtils';
@@ -25,13 +30,26 @@ export default function SunafilEmpresasPage() {
   const [editingEmpresa, setEditingEmpresa] = useState<any | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [empresaToDelete, setEmpresaToDelete] = useState<string | null>(null);
+  const [empresaToToggle, setEmpresaToToggle] = useState<any | null>(null);
+  const [isToggleModalOpen, setIsToggleModalOpen] = useState(false);
+  const [sunafilDetailsEmpresa, setSunafilDetailsEmpresa] = useState<any | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { empresas, loading, user, saveEmpresa, deleteEmpresa } = useEmpresas();
+  const {
+    empresas,
+    loading,
+    syncingEmpresas,
+    handleSyncSunafil,
+    toggleEmpresaActivo,
+    deleteEmpresa,
+    saveEmpresa,
+    user,
+  } = useEmpresas();
 
   // Filtrar únicamente empresas con habilitadoSunafil === true
   const sunafilEmpresas = empresas.filter((emp) => emp.habilitadoSunafil === true);
@@ -47,6 +65,11 @@ export default function SunafilEmpresasPage() {
     setIsModalOpen(true);
   };
 
+  const handleOpenDetails = (empresa: any) => {
+    setSunafilDetailsEmpresa(empresa);
+    setIsDetailsModalOpen(true);
+  };
+
   const openNewModal = () => {
     setEditingEmpresa(null);
     setIsModalOpen(true);
@@ -56,15 +79,16 @@ export default function SunafilEmpresasPage() {
     const data = sunafilEmpresas.map((emp) => ({
       'Razón Social': emp.razonSocial,
       'RUC': emp.ruc,
+      'Usuario SOL': emp.usuarioSol,
       'Módulo': 'SUNAFIL Casilla Electrónica',
-      'Estado Casilla': 'Monitoreo Activo (Beta)',
+      'Estado Casilla': emp.activo !== false ? 'Habilitada' : 'Deshabilitada',
+      'Última Sincronización': emp.ultimaSincronizacion
+        ? new Date(emp.ultimaSincronizacion).toLocaleString('es-PE')
+        : 'Nunca',
+      'Estado Sincro': emp.estadoSincro || 'ESPERA',
     }));
 
     exportToExcel(data, 'Empresas_SUNAFIL', 'SUNAFIL_Empresas');
-  };
-
-  const handleOpenSunafilCasilla = () => {
-    window.open('https://casillaelectronica.sunafil.gob.pe/', '_blank', 'noopener,noreferrer');
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,7 +170,7 @@ export default function SunafilEmpresasPage() {
             </span>
           </div>
           <p className="text-gray-400 text-xs mt-1">
-            Empresas registradas para el monitoreo de actuaciones inspectivas (
+            Empresas registradas para el monitoreo de actuaciones inspectivas y alertas laborales (
             <strong className="text-indigo-400">{sunafilEmpresas.length}</strong> activas).
           </p>
         </div>
@@ -205,9 +229,9 @@ export default function SunafilEmpresasPage() {
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-xs font-bold text-white">Gestión Unificada por RUC</p>
+            <p className="text-xs font-bold text-white">Monitoreo Automatizado de Casilla SUNAFIL</p>
             <p className="text-[11px] text-gray-400">
-              Puedes activar una empresa para SUNAFIL editándola y marcando la casilla correspondiente, o creando una nueva desde aquí.
+              Sincroniza notificaciones de Fiscalización, Cobranza, Acciones Previas (plazos) y Alertas de Formalización / SST.
             </p>
           </div>
         </div>
@@ -228,13 +252,13 @@ export default function SunafilEmpresasPage() {
       {/* Table */}
       <div className="bg-[#111827] border border-white/5 rounded-3xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-white/5 text-gray-400 text-xs uppercase tracking-wider font-bold border-b border-white/5">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-white/[0.02] text-gray-400 text-xs font-bold uppercase tracking-wider border-b border-white/5">
               <tr>
-                <th className="py-4 px-6">Empresa / Razón Social</th>
-                <th className="py-4 px-6">RUC</th>
+                <th className="py-4 px-6">Empresa / RUC</th>
                 <th className="py-4 px-6">Módulo Laboral</th>
-                <th className="py-4 px-6 text-center">Estado Casilla</th>
+                <th className="py-4 px-6">Última Sincro</th>
+                <th className="py-4 px-6">Estado Sincro</th>
                 <th className="py-4 px-6 text-right">Acciones</th>
               </tr>
             </thead>
@@ -257,81 +281,241 @@ export default function SunafilEmpresasPage() {
                   </td>
                 </tr>
               ) : (
-                filteredEmpresas.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold shrink-0">
-                          {emp.razonSocial.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-white text-sm line-clamp-1">{emp.razonSocial}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[11px] text-gray-500 font-mono">RUC: {emp.ruc}</span>
-                            {emp.habilitadoSunat !== false && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                + SUNAT
-                              </span>
-                            )}
+                filteredEmpresas.map((emp) => {
+                  const isDeshabilitado = emp.activo === false;
+                  const isSyncing = !!syncingEmpresas[emp.id];
+
+                  return (
+                    <tr
+                      key={emp.id}
+                      className={`hover:bg-white/[0.02] transition-colors group ${
+                        isDeshabilitado ? 'opacity-60 bg-black/20' : ''
+                      }`}
+                    >
+                      {/* Empresa / RUC */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center border font-bold shrink-0 transition-all ${
+                              isDeshabilitado
+                                ? 'from-gray-900 to-gray-800 border-white/5 text-gray-500'
+                                : 'from-indigo-950 to-indigo-900 border-indigo-500/20 text-indigo-300 group-hover:from-indigo-600 group-hover:to-purple-600 group-hover:text-white'
+                            }`}
+                          >
+                            {emp.razonSocial.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-white mb-0.5 flex items-center gap-2">
+                              {emp.razonSocial}
+                              {isDeshabilitado && (
+                                <span className="text-[10px] uppercase font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                                  Inactiva
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs font-mono text-gray-500">RUC: {emp.ruc}</span>
+                              {emp.habilitadoSunat !== false && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  + SUNAT
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 font-mono font-medium text-white">{emp.ruc}</td>
-                    <td className="py-4 px-6">
-                      <span className="text-xs font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-xl">
-                        Casilla Electrónica
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full inline-flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Habilitada
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={handleOpenSunafilCasilla}
-                          className="text-xs font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1.5 rounded-xl border border-indigo-500/20 transition-all inline-flex items-center gap-1.5"
-                          title="Abrir Casilla Electrónica SUNAFIL"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" /> Casilla
-                        </button>
-                        <button
-                          onClick={() => handleEdit(emp)}
-                          className="p-2 text-gray-400 hover:text-amber-400 hover:bg-amber-400/10 rounded-xl transition-colors"
-                          title="Editar empresa"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEmpresaToDelete(emp.id);
-                            setIsDeleteModalOpen(true);
-                          }}
-                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-colors"
-                          title="Eliminar empresa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+
+                      {/* Módulo Laboral */}
+                      <td className="py-4 px-6">
+                        <span className="text-xs font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-xl">
+                          Casilla Electrónica
+                        </span>
+                      </td>
+
+                      {/* Última Sincro */}
+                      <td className="py-4 px-6">
+                        <span className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                          {emp.ultimaSincronizacion
+                            ? new Date(emp.ultimaSincronizacion).toLocaleDateString('es-PE', {
+                                day: '2-digit',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : 'Nunca'}
+                        </span>
+                      </td>
+
+                      {/* Estado Sincro */}
+                      <td className="py-4 px-6">
+                        {isDeshabilitado ? (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            DESHABILITADO
+                          </span>
+                        ) : isSyncing || emp.estadoSincro === 'SYNCING' ? (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-400 bg-blue-400/10 px-2.5 py-1 rounded-full border border-blue-400/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                            SINCRONIZANDO
+                          </span>
+                        ) : emp.estadoSincro === 'SUCCESS' ? (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            TERMINADO
+                          </span>
+                        ) : emp.estadoSincro === 'ERROR' ? (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-400/10 px-2.5 py-1 rounded-full border border-red-400/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                            ERROR
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-gray-500 bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-600" />
+                            ESPERA
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Acciones */}
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Sincronizar SUNAFIL */}
+                          <button
+                            onClick={() => handleSyncSunafil(emp.id)}
+                            disabled={isSyncing || isDeshabilitado}
+                            className={`p-2 rounded-xl border transition-all ${
+                              isDeshabilitado
+                                ? 'opacity-40 cursor-not-allowed bg-white/5 border-white/10 text-gray-600'
+                                : isSyncing
+                                ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-400'
+                                : 'bg-white/5 border border-white/10 text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/20'
+                            }`}
+                            title={isDeshabilitado ? 'Empresa deshabilitada' : 'Sincronizar Notificaciones SUNAFIL'}
+                          >
+                            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-indigo-400' : ''}`} />
+                          </button>
+
+                          {/* Abrir Casilla Directa */}
+                          <button
+                            onClick={() =>
+                              window.open(
+                                'https://casillaelectronica.sunafil.gob.pe/',
+                                '_blank',
+                                'noopener,noreferrer',
+                              )
+                            }
+                            className="px-2.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-300 hover:text-white rounded-xl transition-all text-xs font-bold flex items-center gap-1.5"
+                            title="Abrir Portal Casilla Electrónica SUNAFIL"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>Casilla</span>
+                          </button>
+
+                          {/* Ver Detalles / Acceso Clave SOL */}
+                          <button
+                            onClick={() => handleOpenDetails(emp)}
+                            className="p-2 bg-white/5 border border-white/10 text-gray-400 hover:text-indigo-300 hover:bg-indigo-500/10 hover:border-indigo-500/20 rounded-xl transition-all"
+                            title="Ver Detalles y Acceso Casilla SUNAFIL"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+
+                          {/* Acciones de Administrador */}
+                          {(user?.rol === 'SUPER_ADMIN' || user?.rol === 'ADMIN') && (
+                            <>
+                              {/* Habilitar / Deshabilitar */}
+                              <button
+                                onClick={() => {
+                                  setEmpresaToToggle(emp);
+                                  setIsToggleModalOpen(true);
+                                }}
+                                className={`p-2 rounded-xl border transition-all ${
+                                  isDeshabilitado
+                                    ? 'bg-amber-500/20 border-amber-500/30 text-amber-400 hover:bg-amber-500/30'
+                                    : 'bg-white/5 border-white/10 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/20'
+                                }`}
+                                title={isDeshabilitado ? 'Habilitar empresa' : 'Deshabilitar empresa'}
+                              >
+                                <Power className="w-4 h-4" />
+                              </button>
+
+                              {/* Editar */}
+                              <button
+                                onClick={() => handleEdit(emp)}
+                                className="p-2 bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                                title="Editar empresa"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+
+                              {/* Eliminar */}
+                              <button
+                                onClick={() => {
+                                  setEmpresaToDelete(emp.id);
+                                  setIsDeleteModalOpen(true);
+                                }}
+                                className="p-2 bg-white/5 border border-white/10 text-gray-400 hover:text-red-400 hover:bg-red-400/10 hover:border-red-400/20 rounded-xl transition-all"
+                                title="Eliminar empresa"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal Formulario */}
+      {/* Modal Formulario Edición / Creación */}
       <EmpresaFormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={saveEmpresa}
         initialData={editingEmpresa}
         defaultEntidad="SUNAFIL"
+      />
+
+      {/* Modal Detalles y Clave SOL SUNAFIL */}
+      <SunafilLoginModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSunafilDetailsEmpresa(null);
+        }}
+        empresa={sunafilDetailsEmpresa}
+        onSync={handleSyncSunafil}
+        isSyncing={sunafilDetailsEmpresa ? !!syncingEmpresas[sunafilDetailsEmpresa.id] : false}
+      />
+
+      {/* Modal Confirmar Toggle Activo/Inactivo */}
+      <ConfirmModal
+        isOpen={isToggleModalOpen}
+        title={empresaToToggle?.activo === false ? '¿Habilitar Empresa?' : '¿Deshabilitar Empresa?'}
+        message={
+          empresaToToggle?.activo === false
+            ? `Se reanudará el monitoreo y sincronización para ${empresaToToggle?.razonSocial}.`
+            : `Al deshabilitar ${empresaToToggle?.razonSocial}, no se ejecutarán sincronizaciones automáticas ni manuales.`
+        }
+        confirmText={empresaToToggle?.activo === false ? 'Habilitar' : 'Deshabilitar'}
+        confirmVariant={empresaToToggle?.activo === false ? 'primary' : 'danger'}
+        onConfirm={async () => {
+          if (empresaToToggle) {
+            await toggleEmpresaActivo(empresaToToggle.id, empresaToToggle.activo ?? true);
+            setIsToggleModalOpen(false);
+            setEmpresaToToggle(null);
+          }
+        }}
+        onClose={() => {
+          setIsToggleModalOpen(false);
+          setEmpresaToToggle(null);
+        }}
       />
 
       {/* Modal Confirmar Eliminar */}

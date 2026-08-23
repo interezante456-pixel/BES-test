@@ -1,12 +1,15 @@
 import { Module } from '@nestjs/common';
-import { ScraperService } from './scraper.service';
-import { ScraperProcessor } from './scraper.processor';
+import { SunatScraperService } from './sunat/sunat-scraper.service';
+import { SunatScraperProcessor } from './sunat/sunat-scraper.processor';
 import { BullModule } from '@nestjs/bullmq';
 import { CronService } from './cron.service';
 import { EncryptionModule } from '../encryption/encryption.module';
-import { PdfParserService } from './pdf-parser.service';
+import { PdfParserService } from './shared/pdf-parser.service';
 import { ScraperController } from './scraper.controller';
 import { QueueController } from './queue.controller';
+import { SunafilScraperService } from './sunafil/sunafil-scraper.service';
+import { SunafilAuthService } from './sunafil/sunafil-auth.service';
+import { SunafilDownloaderService } from './sunafil/sunafil-downloader.service';
 
 @Module({
   imports: [
@@ -29,7 +32,23 @@ import { QueueController } from './queue.controller';
     }),
   ],
   controllers: [ScraperController, QueueController],
-  providers: [ScraperService, ScraperProcessor, CronService, PdfParserService],
-  exports: [ScraperService, PdfParserService],
+  providers: [
+    SunatScraperService,
+    SunatScraperProcessor,
+    CronService,
+    PdfParserService,
+    SunafilScraperService,
+    SunafilAuthService,
+    SunafilDownloaderService,
+  ],
+  exports: [
+    SunatScraperService,
+    PdfParserService,
+    SunafilScraperService,
+    SunafilAuthService,
+    SunafilDownloaderService,
+  ],
 })
 export class ScraperModule {}
+
+

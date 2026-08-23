@@ -71,6 +71,19 @@ export function useEmpresas() {
     }
   };
 
+  const handleSyncSunafil = async (empresaId: string) => {
+    try {
+      setSyncingEmpresas(prev => ({ ...prev, [empresaId]: true }));
+      const res = await api.post(`/scraper/sync-sunafil/${empresaId}`, {});
+      await fetchEmpresas();
+      return res.data;
+    } catch (error: any) {
+      alert(error?.response?.data?.message || "Error al sincronizar SUNAFIL");
+    } finally {
+      setSyncingEmpresas(prev => ({ ...prev, [empresaId]: false }));
+    }
+  };
+
   const handleSyncAll = async () => {
     const activeEmpresas = empresas.filter(e => e.activo !== false);
     if (activeEmpresas.length === 0) {
@@ -122,6 +135,7 @@ export function useEmpresas() {
     syncingEmpresas,
     syncingAll,
     handleSync,
+    handleSyncSunafil,
     handleSyncAll,
     toggleEmpresaActivo,
     deleteEmpresa,
@@ -129,3 +143,4 @@ export function useEmpresas() {
     user
   };
 }
+

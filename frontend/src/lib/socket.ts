@@ -6,13 +6,17 @@ export const getSocket = (): Socket => {
   if (!socket) {
     let URL = '';
     if (typeof window !== 'undefined') {
-      if (window.location.port === '3500') {
+      if (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.port === '3500'
+      ) {
         URL = `${window.location.protocol}//${window.location.hostname}:4000`;
       } else {
         URL = window.location.origin;
       }
     } else {
-      URL = process.env.INTERNAL_API_URL || 'http://backend:3000';
+      URL = process.env.INTERNAL_API_URL || 'http://localhost:4000';
     }
 
     socket = io(URL, {

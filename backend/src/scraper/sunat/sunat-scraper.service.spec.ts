@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ScraperService } from './scraper.service';
-import { PrismaService } from '../prisma.service';
-import { EncryptionService } from '../encryption/encryption.service';
-import { MailService } from '../mail/mail.service';
+import { SunatScraperService } from './sunat-scraper.service';
+import { PrismaService } from '../../prisma.service';
+import { EncryptionService } from '../../encryption/encryption.service';
+import { MailService } from '../../mail/mail.service';
+
 
 describe('ScraperService', () => {
   let service: ScraperService;

@@ -68,6 +68,48 @@ export class NotificacionesController {
     );
   }
 
+  /** SUNAFIL — Métricas y contadores de los 5 módulos */
+  @Get('sunafil/metricas')
+  getSunafilMetricas(
+    @Request() req: any,
+    @Query('empresa') empresa?: string,
+  ) {
+    return this.notificacionesService.getSunafilMetricas(
+      req.user.id,
+      req.user.rol,
+      empresa,
+    );
+  }
+
+  /** SUNAFIL — Listado especializado con filtros por módulo, empresa y fechas */
+  @Get('sunafil')
+  findSunafil(
+    @Request() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('empresa') empresa?: string,
+    @Query('modulo') modulo?: string,
+    @Query('search') search?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('estado') estado?: string,
+  ) {
+    return this.notificacionesService.findSunafilNotificaciones(
+      req.user.id,
+      req.user.rol,
+      {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 50,
+        empresa,
+        modulo,
+        search,
+        startDate,
+        endDate,
+        estado,
+      },
+    );
+  }
+
   /** Marcar una notificación como leída (solo para este usuario) */
   @Patch(':id/read')
   markAsRead(@Param('id') id: string, @Request() req: any) {
