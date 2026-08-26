@@ -1,8 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import puppeteer, { Page, Browser } from 'puppeteer';
 import { PrismaService } from '../../prisma.service';
 import { EncryptionService } from '../../encryption/encryption.service';
-import { SunafilAuthService } from './sunafil-auth.service';
+import {
+  SunafilAuthService,
+  SunafilTermsNotAcceptedError,
+  SunafilContactRegistrationRequiredError,
+} from './sunafil-auth.service';
 import { SunafilDownloaderService } from './sunafil-downloader.service';
 import { FiscalizacionExtractor } from './extractors/fiscalizacion.extractor';
 import { CobranzaExtractor } from './extractors/cobranza.extractor';
@@ -79,6 +83,12 @@ export class SunafilScraperService {
     if (!empresa) {
       throw new Error(`Empresa con ID ${empresaId} no encontrada.`);
     }
+
+    // Marcar como sincronizando
+    await this.prisma.empresa.update({
+      where: { id: empresa.id },
+      data: { estadoSincro: 'SYNCING' },
+    });
 
     const claveSol = this.encryptionService.decrypt(empresa.claveSol);
     let browser: Browser | null = null;
@@ -162,10 +172,11 @@ export class SunafilScraperService {
       result.notificaciones = allRecords;
       result.nuevasGuardadas = await this.guardarNotificaciones(empresa.id, allRecords);
 
-      // Actualizar timestamp de última sincronización
+      // Actualizar timestamp y marcar términos aceptados
       await this.prisma.empresa.update({
         where: { id: empresa.id },
         data: {
+          terminosSunafil: 'ACEPTADOS',
           ultimaSincronizacion: new Date(),
           estadoSincro: 'SUCCESS',
         },
@@ -176,6 +187,45 @@ export class SunafilScraperService {
       );
 
       return result;
+    } catch (error) {
+      if (error instanceof SunafilTermsNotAcceptedError) {
+        this.logger.warn(`[SUNAFIL] Empresa ${empresa.ruc} requiere aceptación manual de Términos y Condiciones.`);
+        await this.prisma.empresa.update({
+          where: { id: empresa.id },
+          data: {
+            terminosSunafil: 'PENDIENTE_ACEPTACION',
+            estadoSincro: 'TERMINOS_PENDIENTES',
+            ultimaSincronizacion: new Date(),
+          },
+        });
+        throw new BadRequestException(
+          `La empresa ${empresa.razonSocial} aún no ha aceptado los Términos y Condiciones de la Casilla SUNAFIL. Ingrese con el botón Casilla para aceptarlos manualmente.`,
+        );
+      }
+
+      if (error instanceof SunafilContactRegistrationRequiredError) {
+        this.logger.warn(`[SUNAFIL] Empresa ${empresa.ruc} requiere registrar por lo menos un contacto en la Casilla SUNAFIL.`);
+        await this.prisma.empresa.update({
+          where: { id: empresa.id },
+          data: {
+            terminosSunafil: 'PENDIENTE_CONTACTO',
+            estadoSincro: 'CONTACTO_PENDIENTE',
+            ultimaSincronizacion: new Date(),
+          },
+        });
+        throw new BadRequestException(
+          `La empresa ${empresa.razonSocial} aún no cuenta con contactos registrados en la Casilla SUNAFIL. Ingrese con el botón Casilla para registrar un contacto.`,
+        );
+      }
+
+      // Cualquier otro error general
+      await this.prisma.empresa.update({
+        where: { id: empresa.id },
+        data: {
+          estadoSincro: 'ERROR',
+        },
+      });
+      throw error;
     } finally {
       if (browser) {
         await browser.close().catch(() => {});

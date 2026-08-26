@@ -15,7 +15,7 @@ window.addEventListener('message', (event) => {
 
   // Escuchar cuando el usuario hace clic en "Abrir en Pestaña" o "Abrir en Incógnito"
   if (event.data && event.data.type === 'BES_FILL_SUNAT') {
-    const { ruc, usuarioSol, claveSol } = event.data.data || {};
+    const { ruc, usuarioSol, claveSol, url } = event.data.data || {};
     const incognito = Boolean(event.data.incognito);
 
     if (ruc) {
@@ -26,7 +26,8 @@ window.addEventListener('message', (event) => {
         data: {
           ruc: ruc || '',
           usuarioSol: usuarioSol || '',
-          claveSol: claveSol || ''
+          claveSol: claveSol || '',
+          url: url || '',
         }
       }, (response) => {
         window.postMessage({

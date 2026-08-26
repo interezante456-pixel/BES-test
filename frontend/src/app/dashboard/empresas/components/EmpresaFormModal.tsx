@@ -24,22 +24,24 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
   const [habilitadoSunafil, setHabilitadoSunafil] = useState(false);
 
   useEffect(() => {
-    if (initialData) {
-      setRuc(initialData.ruc || '');
-      setRazonSocial(initialData.razonSocial || '');
-      setUsuarioSol(initialData.usuarioSol || '');
-      setClaveSol('');
-      setHabilitadoSunat(initialData.habilitadoSunat !== undefined ? initialData.habilitadoSunat : true);
-      setHabilitadoSunafil(initialData.habilitadoSunafil !== undefined ? initialData.habilitadoSunafil : false);
-    } else {
-      setRuc('');
-      setRazonSocial('');
-      setUsuarioSol('');
-      setClaveSol('');
-      setHabilitadoSunat(defaultEntidad === 'SUNAT');
-      setHabilitadoSunafil(defaultEntidad === 'SUNAFIL');
+    if (isOpen) {
+      if (initialData) {
+        setRuc(initialData.ruc || '');
+        setRazonSocial(initialData.razonSocial || '');
+        setUsuarioSol(initialData.usuarioSol || '');
+        setClaveSol('');
+        setHabilitadoSunat(initialData.habilitadoSunat !== undefined ? initialData.habilitadoSunat : true);
+        setHabilitadoSunafil(initialData.habilitadoSunafil !== undefined ? initialData.habilitadoSunafil : false);
+      } else {
+        setRuc('');
+        setRazonSocial('');
+        setUsuarioSol('');
+        setClaveSol('');
+        setHabilitadoSunat(defaultEntidad === 'SUNAT');
+        setHabilitadoSunafil(defaultEntidad === 'SUNAFIL');
+      }
     }
-  }, [initialData, defaultEntidad]);
+  }, [isOpen, initialData, defaultEntidad]);
 
   if (!isOpen) return null;
 
@@ -54,6 +56,10 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
         habilitadoSunafil,
         ...(claveSol ? { claveSol } : {})
       });
+      setRuc('');
+      setRazonSocial('');
+      setUsuarioSol('');
+      setClaveSol('');
       onClose();
     } catch (error) {
       alert("Error al guardar la empresa");

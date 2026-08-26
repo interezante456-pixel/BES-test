@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Building2,
   Search,
@@ -16,6 +16,9 @@ import {
   Clock,
   KeyRound,
   ShieldCheck,
+  CheckCircle2,
+  AlertTriangle,
+  UserPlus,
 } from 'lucide-react';
 import { useEmpresas } from '../../empresas/hooks/useEmpresas';
 import { EmpresaFormModal } from '../../empresas/components/EmpresaFormModal';
@@ -34,11 +37,26 @@ export default function SunafilEmpresasPage() {
   const [isToggleModalOpen, setIsToggleModalOpen] = useState(false);
   const [sunafilDetailsEmpresa, setSunafilDetailsEmpresa] = useState<any | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [extensionInstalled, setExtensionInstalled] = useState(false);
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sunafilOAuthUrl =
+    'https://api-seguridad.sunat.gob.pe/v1/clientessol/b6474e23-8a3b-4153-b301-dafcc9646250/oauth2/login?originalUrl=https://casillaelectronica.sunafil.gob.pe/si.inbox/Login/Empresa&state=s';
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'BES_EXTENSION_INSTALLED') {
+        setExtensionInstalled(true);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    window.postMessage({ type: 'BES_CHECK_EXTENSION' }, '*');
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   const {
     empresas,
@@ -68,6 +86,26 @@ export default function SunafilEmpresasPage() {
   const handleOpenDetails = (empresa: any) => {
     setSunafilDetailsEmpresa(empresa);
     setIsDetailsModalOpen(true);
+  };
+
+  const handleOpenCasilla = (empresa: any) => {
+    if (extensionInstalled) {
+      window.postMessage(
+        {
+          type: 'BES_FILL_SUNAT',
+          incognito: false,
+          data: {
+            ruc: empresa.ruc,
+            usuarioSol: empresa.usuarioSol,
+            claveSol: empresa.claveSol,
+            url: sunafilOAuthUrl,
+          },
+        },
+        '*',
+      );
+    } else {
+      handleOpenDetails(empresa);
+    }
   };
 
   const openNewModal = () => {
@@ -257,6 +295,7 @@ export default function SunafilEmpresasPage() {
               <tr>
                 <th className="py-4 px-6">Empresa / RUC</th>
                 <th className="py-4 px-6">Módulo Laboral</th>
+                <th className="py-4 px-6">Términos Casilla</th>
                 <th className="py-4 px-6">Última Sincro</th>
                 <th className="py-4 px-6">Estado Sincro</th>
                 <th className="py-4 px-6 text-right">Acciones</th>
@@ -265,14 +304,14 @@ export default function SunafilEmpresasPage() {
             <tbody className="divide-y divide-white/5 text-sm text-gray-300">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-gray-500">
+                  <td colSpan={6} className="py-12 text-center text-gray-500">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-400" />
                     Cargando empresas SUNAFIL...
                   </td>
                 </tr>
               ) : filteredEmpresas.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-gray-500">
+                  <td colSpan={6} className="py-12 text-center text-gray-500">
                     <Building2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     <p className="font-semibold text-gray-400">No hay empresas asignadas a SUNAFIL.</p>
                     <p className="text-xs text-gray-600 mt-1">
@@ -332,6 +371,39 @@ export default function SunafilEmpresasPage() {
                         </span>
                       </td>
 
+                      {/* Términos Casilla */}
+                      <td className="py-4 px-6">
+                        {emp.terminosSunafil === 'ACEPTADOS' ? (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full whitespace-nowrap">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            ACEPTADOS
+                          </span>
+                        ) : emp.terminosSunafil === 'PENDIENTE_ACEPTACION' ? (
+                          <button
+                            onClick={() => handleOpenDetails(emp)}
+                            className="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap shadow-[0_0_12px_rgba(245,158,11,0.15)]"
+                            title="⚠️ El titular no ha aceptado los Términos y Condiciones. Haz clic para abrir Casilla y aceptarlos."
+                          >
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span>PENDIENTE TÉRMINOS</span>
+                          </button>
+                        ) : emp.terminosSunafil === 'PENDIENTE_CONTACTO' ? (
+                          <button
+                            onClick={() => handleOpenDetails(emp)}
+                            className="inline-flex items-center gap-1.5 text-[10px] font-bold text-orange-300 bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap shadow-[0_0_12px_rgba(249,115,22,0.15)]"
+                            title="⚠️ La empresa no tiene contactos registrados en la Casilla SUNAFIL. Haz clic para abrir y registrarlos."
+                          >
+                            <UserPlus className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                            <span>FALTA CONTACTO</span>
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-gray-400 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full whitespace-nowrap">
+                            <Clock className="w-3.5 h-3.5 text-gray-500" />
+                            SIN VERIFICAR
+                          </span>
+                        )}
+                      </td>
+
                       {/* Última Sincro */}
                       <td className="py-4 px-6">
                         <span className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
@@ -350,27 +422,37 @@ export default function SunafilEmpresasPage() {
                       {/* Estado Sincro */}
                       <td className="py-4 px-6">
                         {isDeshabilitado ? (
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20 whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                             DESHABILITADO
                           </span>
                         ) : isSyncing || emp.estadoSincro === 'SYNCING' ? (
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-400 bg-blue-400/10 px-2.5 py-1 rounded-full border border-blue-400/20">
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-400 bg-blue-400/10 px-2.5 py-1 rounded-full border border-blue-400/20 whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
                             SINCRONIZANDO
                           </span>
+                        ) : emp.estadoSincro === 'TERMINOS_PENDIENTES' ? (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20 whitespace-nowrap" title="El scraper no puede sincronizar porque los Términos y Condiciones no han sido aceptados">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            TÉRMINOS PENDIENTES
+                          </span>
+                        ) : emp.estadoSincro === 'CONTACTO_PENDIENTE' ? (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-orange-400 bg-orange-400/10 px-2.5 py-1 rounded-full border border-orange-400/20 whitespace-nowrap" title="El scraper no puede sincronizar porque falta registrar por lo menos un contacto en la Casilla SUNAFIL">
+                            <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                            CONTACTO PENDIENTE
+                          </span>
                         ) : emp.estadoSincro === 'SUCCESS' ? (
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/20">
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/20 whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                             TERMINADO
                           </span>
                         ) : emp.estadoSincro === 'ERROR' ? (
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-400/10 px-2.5 py-1 rounded-full border border-red-400/20">
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-400/10 px-2.5 py-1 rounded-full border border-red-400/20 whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
                             ERROR
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-gray-500 bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-gray-500 bg-white/5 px-2.5 py-1 rounded-full border border-white/10 whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-gray-600" />
                             ESPERA
                           </span>
@@ -396,17 +478,11 @@ export default function SunafilEmpresasPage() {
                             <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-indigo-400' : ''}`} />
                           </button>
 
-                          {/* Abrir Casilla Directa */}
+                          {/* Abrir Casilla Directa con Autocompletado */}
                           <button
-                            onClick={() =>
-                              window.open(
-                                'https://casillaelectronica.sunafil.gob.pe/',
-                                '_blank',
-                                'noopener,noreferrer',
-                              )
-                            }
+                            onClick={() => handleOpenCasilla(emp)}
                             className="px-2.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-300 hover:text-white rounded-xl transition-all text-xs font-bold flex items-center gap-1.5"
-                            title="Abrir Portal Casilla Electrónica SUNAFIL"
+                            title="Abrir y Autocompletar Casilla SUNAFIL"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                             <span>Casilla</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Copy,
@@ -12,9 +12,12 @@ import {
   KeyRound,
   Sparkles,
   CheckCircle2,
+  AlertCircle,
   Clock,
   RefreshCw,
   ShieldCheck,
+  ShieldAlert,
+  UserPlus,
 } from 'lucide-react';
 
 interface SunafilLoginModalProps {
@@ -34,6 +37,47 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
 }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [extensionInstalled, setExtensionInstalled] = useState(false);
+  const [actionStatus, setActionStatus] = useState<{
+    type: 'success' | 'warning' | 'info';
+    message: string;
+  } | null>(null);
+
+  const sunafilOAuthUrl =
+    'https://api-seguridad.sunat.gob.pe/v1/clientessol/b6474e23-8a3b-4153-b301-dafcc9646250/oauth2/login?originalUrl=https://casillaelectronica.sunafil.gob.pe/si.inbox/Login/Empresa&state=s';
+
+  // Detectar la extensión BES
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'BES_EXTENSION_INSTALLED') {
+        setExtensionInstalled(true);
+      }
+      if (event.data && event.data.type === 'BES_SUNAT_OPENED') {
+        if (event.data.incognito) {
+          setActionStatus({
+            type: 'success',
+            message: '✓ Ventana de Incógnito abierta y credenciales autocompletadas en SUNAFIL.',
+          });
+        } else {
+          setActionStatus({
+            type: 'success',
+            message: '✓ Pestaña abierta y credenciales autocompletadas en SUNAFIL.',
+          });
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    // Consultar presencia de la extensión
+    window.postMessage({ type: 'BES_CHECK_EXTENSION' }, '*');
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [isOpen]);
 
   if (!isOpen || !empresa) return null;
 
@@ -44,18 +88,41 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const sunafilOAuthUrl =
-    'https://api-seguridad.sunat.gob.pe/v1/clientessol/b6474e23-8a3b-4153-b301-dafcc9646250/oauth2/login?originalUrl=https://casillaelectronica.sunafil.gob.pe/si.inbox/Login/Empresa&state=s';
-
   const openSunafilTab = (mode: 'normal' | 'incognito' = 'normal') => {
-    if (mode === 'incognito') {
-      window.open(
-        sunafilOAuthUrl,
-        `sunafil_incognito_${empresa.ruc}`,
-        'width=1280,height=850,menubar=no,status=no,toolbar=no',
-      );
-    } else {
-      window.open(sunafilOAuthUrl, '_blank', 'noopener,noreferrer');
+    const isIncognito = mode === 'incognito';
+    setActionStatus(null);
+
+    // 1. Notificar a la extensión BES Auto-Fill
+    window.postMessage(
+      {
+        type: 'BES_FILL_SUNAT',
+        incognito: isIncognito,
+        data: {
+          ruc: empresa.ruc,
+          usuarioSol: empresa.usuarioSol,
+          claveSol: empresa.claveSol,
+          url: sunafilOAuthUrl,
+        },
+      },
+      '*',
+    );
+
+    // 2. Si la extensión no está instalada, hacer fallback
+    if (!extensionInstalled) {
+      if (isIncognito) {
+        setActionStatus({
+          type: 'warning',
+          message:
+            '⚠️ Para autocompletar automáticamente instala la extensión BES desde chrome://extensions o copia las credenciales con los botones de abajo.',
+        });
+        window.open(
+          sunafilOAuthUrl,
+          `sunafil_incognito_${empresa.ruc}`,
+          'width=1280,height=850,menubar=no,status=no,toolbar=no',
+        );
+      } else {
+        window.open(sunafilOAuthUrl, '_blank', 'noopener,noreferrer');
+      }
     }
   };
 
@@ -83,12 +150,18 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
                 <h3 className="text-lg font-bold text-white leading-tight">
                   Detalles y Acceso SUNAFIL
                 </h3>
-                <span className="px-2 py-0.5 text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 rounded-full flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-indigo-400" /> Casilla Activa
-                </span>
+                {extensionInstalled ? (
+                  <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Extensión lista
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-full flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Extensión pendiente
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-400">
-                Credenciales Clave SOL y monitoreo de notificaciones laborales
+                Credenciales Clave SOL y autocompletado en Casilla SUNAFIL
               </p>
             </div>
           </div>
@@ -203,17 +276,56 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
             )}
           </div>
 
-          {/* Info Módulos */}
-          <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-3.5">
-            <div className="text-[11px] font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> Módulos Extraídos en Casilla SUNAFIL:
+          {/* Alerta de Términos y Condiciones Pendientes */}
+          {empresa.terminosSunafil === 'PENDIENTE_ACEPTACION' && (
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-2.5 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-200 leading-relaxed">
+                <strong className="text-amber-300 font-bold block mb-0.5">⚠️ Términos y Condiciones Pendientes</strong>
+                Esta empresa aún no ha aceptado los Términos y Condiciones de la Casilla SUNAFIL. Haz clic en <strong>&quot;Abrir y Autocompletar&quot;</strong> para ingresar con la Clave SOL y aceptarlos manualmente antes de sincronizar.
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-1 text-[11px] text-gray-400">
-              <div>• Fiscalización Laboral</div>
-              <div>• Cobranza Ordinaria</div>
-              <div>• Acciones Previas (Plazos)</div>
-              <div>• Alertas Formalización</div>
-              <div className="col-span-2">• Seguridad y Salud en el Trabajo</div>
+          )}
+
+          {/* Alerta de Contacto Pendiente */}
+          {empresa.terminosSunafil === 'PENDIENTE_CONTACTO' && (
+            <div className="p-3.5 bg-orange-500/10 border border-orange-500/30 rounded-2xl flex items-start gap-2.5 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+              <UserPlus className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-orange-200 leading-relaxed">
+                <strong className="text-orange-300 font-bold block mb-0.5">⚠️ Falta Registrar Contacto en SUNAFIL</strong>
+                Esta empresa no cuenta con contactos registrados en la Casilla SUNAFIL. Haz clic en <strong>&quot;Abrir y Autocompletar&quot;</strong> para ingresar con la Clave SOL y registrar por lo menos los datos de un contacto.
+              </div>
+            </div>
+          )}
+
+          {/* Status Feedback */}
+          {actionStatus && (
+            <div
+              className={`p-3.5 rounded-2xl border text-xs leading-relaxed ${
+                actionStatus.type === 'warning'
+                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-200'
+                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+              }`}
+            >
+              {actionStatus.message}
+            </div>
+          )}
+
+          {/* Tip Extensión / Multi-Cuenta */}
+          <div className="p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+            <div className="text-[11px] text-indigo-200/90 leading-relaxed space-y-1">
+              <p>
+                <strong>Autocompletado instantáneo:</strong> Con la extensión cargada en{' '}
+                <code className="text-white bg-white/10 px-1 py-0.5 rounded font-mono">
+                  chrome://extensions
+                </code>{' '}
+                o{' '}
+                <code className="text-white bg-white/10 px-1 py-0.5 rounded font-mono">
+                  brave://extensions
+                </code>
+                , los datos se rellenarán automáticamente en el formulario oficial.
+              </p>
             </div>
           </div>
 
@@ -222,15 +334,15 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => openSunafilTab('normal')}
-                className="py-3 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+                className="py-3 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
               >
-                <ExternalLink className="w-4 h-4" /> Abrir Casilla
+                <ExternalLink className="w-4 h-4" /> Abrir y Autocompletar
               </button>
               <button
                 onClick={() => openSunafilTab('incognito')}
                 className="py-3 px-4 rounded-xl text-xs font-bold text-gray-300 bg-white/5 hover:bg-white/10 hover:text-white border border-white/10 transition-all flex items-center justify-center gap-2"
               >
-                <ExternalLink className="w-4 h-4 text-purple-400" /> Modo Incógnito
+                <ShieldAlert className="w-4 h-4 text-amber-400" /> Ventana Incógnito
               </button>
             </div>
 

@@ -54,6 +54,7 @@ model Empresa {
   claveSol             String
   habilitadoSunat      Boolean        @default(true)
   habilitadoSunafil    Boolean        @default(false)
+  terminosSunafil      String         @default("SIN_VERIFICAR") // "SIN_VERIFICAR" | "ACEPTADOS" | "PENDIENTE_ACEPTACION"
   estadoConexion       EstadoConexion @default(CONECTADO)
   estadoSincro         String         @default("IDLE")
   activo               Boolean        @default(true)

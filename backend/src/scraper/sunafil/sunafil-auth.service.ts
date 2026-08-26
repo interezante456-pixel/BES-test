@@ -103,10 +103,90 @@ export class SunafilAuthService {
     const currentUrl = page.url();
     this.logger.log(`[SUNAFIL Auth] URL tras login: ${currentUrl}`);
 
-    // 7. Cerrar modal de bienvenida si aparece
+    // Esperar un momento a que el DOM y modales se rendericen
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // 7. Verificar si aparece el modal bloqueante de Términos y Condiciones
+    const hasPendingTerms = await this.checkTermsAndConditions(page);
+    if (hasPendingTerms) {
+      this.logger.warn(
+        `[SUNAFIL Auth] ⚠️ Detectado modal de Términos y Condiciones en la empresa ${ruc}. El titular no los ha aceptado. Abortando de inmediato sin aceptar.`,
+      );
+      throw new SunafilTermsNotAcceptedError(
+        `Términos y Condiciones de la Casilla SUNAFIL no aceptados por el titular para la empresa ${ruc}.`,
+      );
+    }
+
+    // 8. Verificar si aparece el modal/pantalla bloqueante de Registro de Contacto
+    const hasPendingContact = await this.checkContactRegistration(page);
+    if (hasPendingContact) {
+      this.logger.warn(
+        `[SUNAFIL Auth] ⚠️ Detectado aviso de Registro de Contacto en la empresa ${ruc}. No cuenta con contactos registrados. Abortando de inmediato.`,
+      );
+      throw new SunafilContactRegistrationRequiredError(
+        `La empresa ${ruc} no cuenta con contactos registrados en la Casilla Electrónica de SUNAFIL.`,
+      );
+    }
+
+    // 9. Cerrar modal informativo de bienvenida si aparece
     await this.closeWelcomeModal(page);
 
     return true;
+  }
+
+  /**
+   * Detecta si está visible el modal de Términos y Condiciones de la Casilla SUNAFIL
+   */
+  async checkTermsAndConditions(page: Page): Promise<boolean> {
+    try {
+      const isTermsModalPresent = await page.evaluate(() => {
+        const text = (document.body.innerText || '').toUpperCase();
+        const hasTermsText =
+          text.includes('TERMINOS Y CONDICIONES') ||
+          text.includes('TÉRMINOS Y CONDICIONES') ||
+          text.includes('ACUERDO DE USO DE LA CASILLA ELECTRÓNICA');
+
+        const allButtons = Array.from(document.querySelectorAll('button, a, .btn'));
+        const hasNoAceptoBtn = allButtons.some((b) => {
+          const btnText = (b.textContent || '').trim().toLowerCase();
+          return btnText.includes('no acepto') || btnText.includes('no aceptar');
+        });
+
+        return hasTermsText && hasNoAceptoBtn;
+      });
+
+      return Boolean(isTermsModalPresent);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Detecta si está visible el modal o pantalla de Registro de Contacto requerido de SUNAFIL
+   */
+  async checkContactRegistration(page: Page): Promise<boolean> {
+    try {
+      const isContactRequired = await page.evaluate(() => {
+        const text = (document.body.innerText || '').toLowerCase();
+        const hasContactModal =
+          text.includes('registro contacto') ||
+          text.includes('no cuenta con contactos registrados en la casilla electrónica') ||
+          text.includes('por lo que se solicita registrar por lo menos los datos de un contacto');
+
+        const hasGrabarContactoBtn = Array.from(
+          document.querySelectorAll('button, a, input[type="button"], input[type="submit"]'),
+        ).some((b) => {
+          const btnText = (b.textContent || (b as HTMLInputElement).value || '').trim().toLowerCase();
+          return btnText.includes('grabar contacto');
+        });
+
+        return hasContactModal || hasGrabarContactoBtn;
+      });
+
+      return Boolean(isContactRequired);
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -115,8 +195,19 @@ export class SunafilAuthService {
   async closeWelcomeModal(page: Page): Promise<void> {
     try {
       await page.waitForSelector('.modal.show, .modal-dialog, #modalNotificaciones, .modal-content, div[role="dialog"]', {
-        timeout: 6000,
+        timeout: 4000,
       });
+
+      // Asegurarse de que no sea el modal de términos y condiciones ni de contacto
+      const isTerms = await this.checkTermsAndConditions(page);
+      if (isTerms) {
+        throw new SunafilTermsNotAcceptedError('Términos y Condiciones detectados en el modal.');
+      }
+
+      const isContact = await this.checkContactRegistration(page);
+      if (isContact) {
+        throw new SunafilContactRegistrationRequiredError('Registro de Contacto requerido detectado en el modal.');
+      }
 
       this.logger.log('[SUNAFIL Auth] Modal de bienvenida detectado. Procediendo a cerrarlo...');
 
@@ -125,15 +216,32 @@ export class SunafilAuthService {
           document.querySelector('.modal-header .close, button.close, [data-dismiss="modal"]') ||
           Array.from(document.querySelectorAll('button, span, a')).find((el) => {
             const txt = el.textContent?.trim().toLowerCase() || '';
-            return txt === '×' || txt === 'x' || txt === 'cerrar';
+            return txt === '×' || txt === 'x' || txt === 'cerrar' || txt === 'entendido';
           });
         if (closeBtn) {
           (closeBtn as HTMLElement).click();
         }
       });
       await new Promise((r) => setTimeout(r, 1200));
-    } catch {
-      // Si no aparece modal dentro de 6s, continuar normalmente
+    } catch (e) {
+      if (e instanceof SunafilTermsNotAcceptedError || e instanceof SunafilContactRegistrationRequiredError) {
+        throw e;
+      }
+      // Si no aparece modal dentro de 4s, continuar normalmente
     }
+  }
+}
+
+export class SunafilTermsNotAcceptedError extends Error {
+  constructor(message = 'Términos y Condiciones de la Casilla SUNAFIL no han sido aceptados por el titular.') {
+    super(message);
+    this.name = 'SunafilTermsNotAcceptedError';
+  }
+}
+
+export class SunafilContactRegistrationRequiredError extends Error {
+  constructor(message = 'La empresa no cuenta con contactos registrados en la Casilla Electrónica de SUNAFIL.') {
+    super(message);
+    this.name = 'SunafilContactRegistrationRequiredError';
   }
 }
