@@ -1,32 +1,39 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Empresa } from '@/types/empresa';
 import api from '@/lib/api';
-import { useAuthStore } from '@/store/useAuthStore';
 import { getSocket } from '@/lib/socket';
+import { useAuthStore } from '@/store/useAuthStore';
+import { toast } from '@/store/useToastStore';
+import { useSyncStore } from '@/store/useSyncStore';
 
 export function useEmpresas() {
-  const [empresas, setEmpresas] = useState<any[]>([]);
+  const { user, isAuthenticated } = useAuthStore();
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const empresasRef = useRef<Empresa[]>([]);
+  empresasRef.current = empresas;
+
   const [loading, setLoading] = useState(true);
-  const [syncingEmpresas, setSyncingEmpresas] = useState<Record<string, boolean>>({});
   const [syncingAll, setSyncingAll] = useState(false);
-  const { isAuthenticated, user } = useAuthStore();
+  const [syncingEmpresas, setSyncingEmpresas] = useState<Record<string, boolean>>({});
 
   const fetchEmpresas = useCallback(async () => {
     try {
       const res = await api.get('/empresas');
       setEmpresas(res.data);
     } catch (error) {
-      console.error("Error loading companies", error);
+      console.error("Error fetching empresas:", error);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // 1. Cargar empresas y suscribirse a WebSockets por usuario
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    // 1. Al cargar, resetear empresas atascadas en SYNCING (por Render durmiendo)
+    
+    // Resetear empresas atascadas una sola vez al montar
     api.post('/empresas/reset-stuck', {}).catch(() => {});
-
+    
     fetchEmpresas();
 
     if (user?.id) {
@@ -34,12 +41,19 @@ export function useEmpresas() {
 
       const handleSyncFinished = (data: any) => {
         setSyncingEmpresas(prev => ({ ...prev, [data.empresaId]: false }));
+        const emp = empresasRef.current.find(e => e.id === data.empresaId);
+        const name = emp ? (emp.razonSocial || emp.ruc) : 'Empresa';
+        useSyncStore.getState().recordEmpresaSync(name, true);
+        toast.success(`Sincronización completada: ${name}`, 'Buzón SUNAT');
         fetchEmpresas();
       };
 
       const handleSyncError = (data: any) => {
         setSyncingEmpresas(prev => ({ ...prev, [data.empresaId]: false }));
-        alert(`Error sincronizando: ${data.message}`);
+        const emp = empresasRef.current.find(e => e.id === data.empresaId);
+        const name = emp ? (emp.razonSocial || emp.ruc) : 'Empresa';
+        useSyncStore.getState().recordEmpresaSync(`${name} (Error)`, false);
+        toast.error(data.message || 'Error de conexión con SUNAT', `Error: ${name}`);
         fetchEmpresas();
       };
 
@@ -53,43 +67,53 @@ export function useEmpresas() {
     }
   }, [isAuthenticated, user?.id, fetchEmpresas]);
 
+
   // 2. Polling cada 15s cuando hay empresas sincronizando (para capturar completions)
+  const hasSyncing = empresas.some(e => e.estadoSincro === 'SYNCING');
   useEffect(() => {
-    const hasSyncing = empresas.some(e => e.estadoSincro === 'SYNCING');
     if (!hasSyncing) return;
     const interval = setInterval(() => fetchEmpresas(), 15000);
     return () => clearInterval(interval);
-  }, [empresas, fetchEmpresas]);
+  }, [hasSyncing, fetchEmpresas]);
+
 
   const handleSync = async (empresaId: string) => {
     try {
       setSyncingEmpresas(prev => ({ ...prev, [empresaId]: true }));
+      const emp = empresasRef.current.find(e => e.id === empresaId);
+      const name = emp ? (emp.razonSocial || emp.ruc) : 'Empresa';
+      useSyncStore.getState().startSync(1, 'SUNAT');
+      toast.info(`Iniciando conexión para ${name}...`, "Sincronizando");
       await api.post(`/scraper/sync/${empresaId}`, {});
     } catch (error) {
       setSyncingEmpresas(prev => ({ ...prev, [empresaId]: false }));
-      alert("No se pudo iniciar la sincronización");
+      toast.error("No se pudo iniciar la sincronización de la empresa");
     }
   };
 
   const handleSyncSunafil = async (empresaId: string) => {
     try {
       setSyncingEmpresas(prev => ({ ...prev, [empresaId]: true }));
+      useSyncStore.getState().startSync(1, 'SUNAFIL');
+      toast.info("Iniciando conexión con SUNAFIL...", "Sincronizando");
       const res = await api.post(`/scraper/sync-sunafil/${empresaId}`, {});
       await fetchEmpresas();
+      toast.success("Sincronización SUNAFIL finalizada con éxito");
       return res.data;
     } catch (error: any) {
-      alert(error?.response?.data?.message || "Error al sincronizar SUNAFIL");
+      toast.error(error?.response?.data?.message || "Error al sincronizar SUNAFIL");
     } finally {
       setSyncingEmpresas(prev => ({ ...prev, [empresaId]: false }));
     }
   };
 
   const handleSyncAll = async () => {
-    const activeEmpresas = empresas.filter(e => e.activo !== false);
+    const activeEmpresas = empresas.filter(e => e.activo !== false && e.habilitadoSunat !== false);
     if (activeEmpresas.length === 0) {
-      alert("No hay empresas activas para sincronizar");
+      toast.warning("No hay empresas activas de SUNAT para sincronizar");
       return;
     }
+
     setSyncingAll(true);
     const newSyncingState = { ...syncingEmpresas };
     activeEmpresas.forEach(emp => { newSyncingState[emp.id] = true; });
@@ -97,9 +121,11 @@ export function useEmpresas() {
 
     try {
       const res = await api.post('/scraper/sync-all', {});
-      alert(`Se encolaron ${res.data.count} empresas activas para sincronización.`);
+      const count = res.data.count ?? activeEmpresas.length;
+      useSyncStore.getState().startSync(count, 'SUNAT');
+      toast.info(`Se encolaron ${count} empresas activas para sincronización.`, 'Sincronización Masiva');
     } catch (error) {
-      alert("Error al iniciar la sincronización masiva");
+      toast.error("Error al iniciar la sincronización masiva");
       setSyncingEmpresas({});
     } finally {
       setSyncingAll(false);
@@ -107,17 +133,25 @@ export function useEmpresas() {
   };
 
   const toggleEmpresaActivo = async (id: string, currentActivo: boolean) => {
+    const nuevoEstado = !currentActivo;
     try {
-      await api.patch(`/empresas/${id}`, { activo: !currentActivo });
+      await api.patch(`/empresas/${id}`, { activo: nuevoEstado });
       await fetchEmpresas();
+      toast.success(`Empresa ${nuevoEstado ? 'reactivada' : 'pausada'} correctamente`);
     } catch (error) {
-      alert("Error al cambiar el estado de la empresa");
+      toast.error("Error al cambiar el estado de la empresa");
     }
   };
 
+
   const deleteEmpresa = async (id: string) => {
-    await api.delete(`/empresas/${id}`);
-    await fetchEmpresas();
+    try {
+      await api.delete(`/empresas/${id}`);
+      await fetchEmpresas();
+      toast.success("Empresa eliminada correctamente");
+    } catch (error) {
+      toast.error("Error al eliminar la empresa");
+    }
   };
 
   const saveEmpresa = async (id: string | null, data: any) => {

@@ -18,6 +18,9 @@ function ArchivoContent() {
     searchTerm,
     startDate,
     endDate,
+    categoriaFilter,
+    setCategoriaFilter,
+    counts,
     selectedIds,
     allSelected,
     canDelete,
@@ -57,7 +60,7 @@ function ArchivoContent() {
         </span>
       </div>
 
-      {/* Search & Date Filters */}
+      {/* Search & Date Filters + Categorías de Alertas */}
       <NotificationFilterBar
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
@@ -65,6 +68,9 @@ function ArchivoContent() {
         onStartDateChange={setStartDate}
         endDate={endDate}
         onEndDateChange={setEndDate}
+        categoriaFilter={categoriaFilter}
+        onCategoriaFilterChange={setCategoriaFilter}
+        counts={counts}
         onClearFilters={clearFilters}
       />
 

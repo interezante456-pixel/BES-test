@@ -101,19 +101,31 @@ export class ScraperController {
     let empresas: any[] = [];
 
     if (rol === 'SUPER_ADMIN' || rol === 'ADMIN') {
-      // SUPER_ADMIN y ADMIN sincronizan todas las empresas ACTIVAS del sistema
+      // SUPER_ADMIN y ADMIN sincronizan todas las empresas ACTIVAS con SUNAT del sistema
       empresas = await this.prisma.empresa.findMany({
-        where: { activo: true },
+        where: {
+          activo: true,
+          habilitadoSunat: true,
+          NOT: { usuarioSol: '' },
+        },
         select: { id: true, usuarioId: true },
       });
     } else {
-      // USUARIO_LOCAL: solo las asignadas que estén ACTIVAS
+      // USUARIO_LOCAL: solo las asignadas que estén ACTIVAS con SUNAT
       const asignaciones = await this.prisma.empresaAsignacion.findMany({
-        where: { usuarioId: callerId, empresa: { activo: true } },
+        where: {
+          usuarioId: callerId,
+          empresa: {
+            activo: true,
+            habilitadoSunat: true,
+            NOT: { usuarioSol: '' },
+          },
+        },
         include: { empresa: { select: { id: true, usuarioId: true } } },
       });
       empresas = asignaciones.map((a) => a.empresa);
     }
+
 
     if (!empresas || empresas.length === 0) {
       return { message: 'No hay empresas para sincronizar', count: 0 };

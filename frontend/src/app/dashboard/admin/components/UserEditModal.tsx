@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserCog, Eye, EyeOff, Mail, Shield, CheckSquare, Square } from 'lucide-react';
 import { ModuloAcceso } from '@/types/user';
+import { toast } from '@/store/useToastStore';
 
 interface UserEditModalProps {
   isOpen: boolean;
@@ -86,7 +87,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.dni.trim().length !== 8) {
-      alert('El DNI debe contener 8 dígitos.');
+      toast.warning('El DNI debe contener exactamente 8 dígitos.', 'Validación');
       return;
     }
     setLoading(true);
@@ -101,13 +102,15 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
       };
       if (form.password.trim()) data.password = form.password;
       await onSubmit(user.id, data);
+      toast.success('Usuario actualizado correctamente', 'Guardado');
       onClose();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error al actualizar usuario');
+      toast.error(err.response?.data?.message || 'Error al actualizar usuario', 'Error');
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

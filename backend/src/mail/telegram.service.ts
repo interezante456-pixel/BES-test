@@ -14,24 +14,35 @@ export class TelegramService {
       this.logger.debug('Telegram no configurado con credenciales reales. Omitiendo.');
       return;
     }
+    if (!chatId || !chatId.trim()) return;
 
-    const text = `🚨 *ALERTA URGENTE SUNAT* 🚨\n\n` +
-      `🏢 *Empresa:* ${empresaNombre}\n` +
-      `📄 *Asunto:* ${asunto}\n\n` +
-      `⚠️ *Acción requerida:* Ingrese al panel BES para revisar el documento PDF inmediatamente y evitar multas o embargos.`;
+
+    const escapeHtml = (str: string) =>
+      (str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    const text =
+      `🚨 <b>ALERTA URGENTE SUNAT</b> 🚨\n\n` +
+      `🏢 <b>Empresa:</b> ${escapeHtml(empresaNombre)}\n` +
+      `📄 <b>Asunto:</b> ${escapeHtml(asunto)}\n\n` +
+      `⚠️ <b>Acción requerida:</b> Ingrese al panel BES para revisar el documento PDF inmediatamente y evitar multas o embargos.`;
 
     try {
       const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
       await axios.post(url, {
-        chat_id: chatId,
+        chat_id: chatId.trim(),
         text,
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
       });
       this.logger.log(`Alerta de Telegram enviada a chatId: ${chatId}`);
     } catch (error: any) {
-      this.logger.error(`Error enviando notificación por Telegram: ${error.message}`);
+      const desc = error.response?.data?.description || error.message;
+      this.logger.error(`Error enviando notificación por Telegram: ${desc}`);
     }
   }
+
 
   /**
    * Envia la alerta de Telegram unicamente a los usuarios propietarios o asignados a la empresa dada.

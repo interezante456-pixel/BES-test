@@ -10,6 +10,7 @@ import { SunafilFilterBar } from './components/SunafilFilterBar';
 import { SunafilTable } from './components/SunafilTable';
 import { SunafilDetailDrawer } from './components/SunafilDetailDrawer';
 import { exportToExcel } from '@/lib/excelUtils';
+import { toast } from '@/store/useToastStore';
 
 export default function SunafilPage() {
   const { user } = useAuthStore();
@@ -139,7 +140,7 @@ export default function SunafilPage() {
       fetchNotificaciones();
     } catch (err: any) {
       console.error('Error deleting notifications:', err);
-      alert(err.response?.data?.message || 'Error al eliminar notificaciones');
+      toast.error(err.response?.data?.message || 'Error al eliminar notificaciones');
     } finally {
       setIsDeleting(false);
     }
@@ -148,7 +149,7 @@ export default function SunafilPage() {
   // Exportación a Excel
   const handleExportExcel = () => {
     if (notificaciones.length === 0) {
-      alert('No hay notificaciones para exportar.');
+      toast.warning('No hay notificaciones para exportar.');
       return;
     }
 

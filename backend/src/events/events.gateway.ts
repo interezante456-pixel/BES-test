@@ -30,10 +30,17 @@ export class EventsGateway
     console.log(`Cliente desconectado: ${client.id}`);
   }
 
-  // Método para emitir eventos a un cliente específico o a todos
+  // Método para emitir eventos a un cliente específico o a su canal
   emitToUser(usuarioId: string, event: string, data: any) {
-    // Por simplicidad, aquí emitimos a todos. En producción,
-    // se recomienda usar "rooms" para aislar los sockets por usuarioId.
-    this.server.emit(`${event}-${usuarioId}`, data);
+    if (this.server) {
+      this.server.emit(`${event}-${usuarioId}`, data);
+    }
+  }
+
+  // Método para emitir eventos de difusión global a todos los clientes conectados
+  emitAll(event: string, data: any) {
+    if (this.server) {
+      this.server.emit(event, data);
+    }
   }
 }

@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../prisma.service';
 import { PdfParserService } from '../scraper/shared/pdf-parser.service';
 import { EmpresaAccessService } from '../common/empresa-access.service';
+import { EventsGateway } from '../events/events.gateway';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -19,6 +20,7 @@ export class NotificacionesService implements OnModuleInit {
     private prisma: PrismaService,
     private pdfParserService: PdfParserService,
     private empresaAccessService: EmpresaAccessService,
+    private eventsGateway: EventsGateway,
   ) {}
 
   async onModuleInit() {
@@ -77,29 +79,31 @@ export class NotificacionesService implements OnModuleInit {
     return this.empresaAccessService.getEmpresaIds(usuarioId, rol);
   }
 
-  /** BANDEJA: notificaciones que este usuario AÚN NO ha leído */
+  /** BANDEJA: notificaciones no leídas globalmente (por ningún usuario de la empresa) */
   async findBandejaByUser(usuarioId: string, rol: string, filters: any = {}) {
     const empresaIds = await this.getEmpresaIds(usuarioId, rol);
     if (empresaIds.length === 0) return { data: [], meta: { total: 0, page: 1, lastPage: 1 } };
 
-    return this.buildPaginatedQuery(empresaIds, { none: { usuarioId } }, filters);
+    // Bandeja global: muestra las no leídas por NADIE (leidoGlobal = false)
+    return this.buildPaginatedQuery(empresaIds, false, filters);
   }
 
-  /** ARCHIVO: notificaciones que este usuario YA leyó */
+  /** ARCHIVO: notificaciones ya leídas por al menos un usuario */
   async findArchivoByUser(usuarioId: string, rol: string, filters: any = {}) {
     const empresaIds = await this.getEmpresaIds(usuarioId, rol);
     if (empresaIds.length === 0) return { data: [], meta: { total: 0, page: 1, lastPage: 1 } };
 
-    return this.buildPaginatedQuery(empresaIds, { some: { usuarioId } }, filters);
+    // Archivo global: muestra las que YA fueron abiertas por algún usuario
+    return this.buildPaginatedQuery(empresaIds, true, filters);
   }
 
-  private async buildPaginatedQuery(empresaIds: string[], lecturasCondition: any, filters: any) {
+  private async buildPaginatedQuery(empresaIds: string[], leidoGlobal: boolean, filters: any) {
     const { page = 1, limit = 50, empresa, search, startDate, endDate } = filters;
     const skip = (page - 1) * limit;
 
     const whereParams: any = {
       empresaId: { in: empresaIds },
-      lecturas: lecturasCondition,
+      leidoGlobal,
     };
 
     if (empresa) {
@@ -142,35 +146,111 @@ export class NotificacionesService implements OnModuleInit {
   }
 
 
-  /** Marca una notificación como leída SOLO para este usuario */
+  /** Marca una notificación como leída globalmente y registra en la bitácora de auditoría */
   async markAsRead(notificacionId: string, usuarioId: string) {
-    return this.prisma.notificacionLectura.upsert({
+    // Obtener datos del usuario para el registro de auditoría
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: { nombres: true, apellidos: true },
+    });
+    const nombreCompleto = usuario
+      ? `${usuario.nombres} ${usuario.apellidos}`.trim()
+      : 'Usuario desconocido';
+
+    // 1. Registrar en la bitácora de auditoría (quién y cuándo abrió la notificación)
+    await this.prisma.notificacionLectura.upsert({
       where: { notificacionId_usuarioId: { notificacionId, usuarioId } },
       create: { notificacionId, usuarioId },
       update: {},
     });
+
+    // 2. Marcar como leída globalmente si aún no lo está (solo la primera apertura registra el usuario)
+    await this.prisma.notificacion.updateMany({
+      where: { id: notificacionId, leidoGlobal: false },
+      data: {
+        leidoGlobal: true,
+        leidoEn: new Date(),
+        leidoPorId: usuarioId,
+        leidoPorNombre: nombreCompleto,
+      },
+    });
+
+    // 3. Emitir evento WebSocket en tiempo real a todos los navegadores conectados
+    this.eventsGateway.emitAll('notificacion:leida', {
+      id: notificacionId,
+      usuarioId,
+      nombreCompleto,
+    });
+
+    return { success: true };
   }
 
-  /** Marca TODAS las notificaciones de bandeja como leídas para este usuario */
+  /** Marca TODAS las notificaciones sin leer como leídas globalmente */
   async markAllAsRead(usuarioId: string, rol: string) {
     const empresaIds = await this.getEmpresaIds(usuarioId, rol);
     if (empresaIds.length === 0) return { count: 0 };
 
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: { nombres: true, apellidos: true },
+    });
+    const nombreCompleto = usuario
+      ? `${usuario.nombres} ${usuario.apellidos}`.trim()
+      : 'Usuario desconocido';
+
+    // Obtener las que aún no han sido leídas globalmente
     const sinLeer = await this.prisma.notificacion.findMany({
-      where: {
-        empresaId: { in: empresaIds },
-        lecturas: { none: { usuarioId } },
-      },
+      where: { empresaId: { in: empresaIds }, leidoGlobal: false },
       select: { id: true },
     });
 
+    if (sinLeer.length === 0) return { count: 0 };
+
+    const now = new Date();
+
+    // 1. Marcar todas como leídas globalmente
+    await this.prisma.notificacion.updateMany({
+      where: { id: { in: sinLeer.map((n) => n.id) } },
+      data: {
+        leidoGlobal: true,
+        leidoEn: now,
+        leidoPorId: usuarioId,
+        leidoPorNombre: nombreCompleto,
+      },
+    });
+
+    // 2. Registrar en bitácora de auditoría (para tener quién las marcó masivamente)
     const lecturas = sinLeer.map((n) => ({ notificacionId: n.id, usuarioId }));
     await this.prisma.notificacionLectura.createMany({
       data: lecturas,
       skipDuplicates: true,
     });
 
-    return { count: lecturas.length };
+    // 3. Emitir evento WebSocket en tiempo real a todos los navegadores conectados
+    this.eventsGateway.emitAll('notificacion:todas_leidas', {
+      usuarioId,
+      nombreCompleto,
+      count: sinLeer.length,
+    });
+
+    return { count: sinLeer.length };
+  }
+
+  /** Retorna el historial de auditoría: todos los usuarios que abrieron una notificación */
+  async getReadHistory(notificacionId: string) {
+    const lecturas = await this.prisma.notificacionLectura.findMany({
+      where: { notificacionId },
+      include: {
+        usuario: { select: { nombres: true, apellidos: true } },
+      },
+      orderBy: { creadoAt: 'asc' },
+    });
+
+    return lecturas.map((l) => ({
+      usuarioId: l.usuarioId,
+      nombreCompleto: `${l.usuario.nombres} ${l.usuario.apellidos}`.trim(),
+      abiertaEn: l.creadoAt,
+    }));
   }
 
   private deletePdfFile(rutaArchivoPdf: string | null) {

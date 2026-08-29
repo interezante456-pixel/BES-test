@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import { toast } from '@/store/useToastStore';
 
 export function useAdmin() {
   const { user } = useAuthStore();
@@ -44,10 +45,16 @@ export function useAdmin() {
   };
 
   const deleteUser = async (id: string) => {
-    if (!confirm('¿Eliminar este usuario? Esta acción no se puede deshacer.')) return;
-    await api.delete(`/usuarios/${id}`);
-    await fetchUsuarios();
+    try {
+      await api.delete(`/usuarios/${id}`);
+      await fetchUsuarios();
+      toast.success('Usuario eliminado correctamente', 'Administración');
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al eliminar usuario', 'Error');
+    }
   };
+
 
   const updateUser = async (id: string, data: any) => {
     await api.patch(`/usuarios/${id}`, data);

@@ -23,6 +23,8 @@ import {
 import { useEmpresas } from '../../empresas/hooks/useEmpresas';
 import { EmpresaFormModal } from '../../empresas/components/EmpresaFormModal';
 import { SunafilLoginModal } from '../../empresas/components/SunafilLoginModal';
+import { toast } from '@/store/useToastStore';
+
 import { ExcelImportModal } from '@/components/ExcelImportModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import { exportToExcel, readExcelFile, getVal } from '@/lib/excelUtils';
@@ -138,7 +140,7 @@ export default function SunafilEmpresasPage() {
       setIsImportModalOpen(true);
     } catch (err) {
       console.error('Error reading excel file:', err);
-      alert('Error al leer el archivo Excel.');
+      toast.error('Error al leer el archivo Excel.');
     } finally {
       e.target.value = '';
     }
@@ -184,14 +186,18 @@ export default function SunafilEmpresasPage() {
     setImportPreview([]);
 
     if (errorDetails.length > 0) {
-      alert(
-        `Importación finalizada.\n\n✅ Exitosas: ${success}\n❌ Errores: ${errors}\n\nDetalles:\n` +
-          errorDetails.slice(0, 8).join('\n')
+      toast.warning(
+        `Importación finalizada. Exitosas: ${success}, Errores: ${errors}. Revisa los datos de las empresas con falla.`,
+        'Resultado de Importación'
       );
     } else {
-      alert(`✅ Importación completada con éxito: ${success} empresas registradas en SUNAFIL.`);
+      toast.success(
+        `Importación completada con éxito: ${success} empresas registradas en SUNAFIL.`,
+        'Importación Exitosa'
+      );
     }
   };
+
 
   return (
     <div className="space-y-6">

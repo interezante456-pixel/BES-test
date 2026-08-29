@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect } from 'react';
-import { X, Download, FileText, AlertTriangle, Building, Calendar, ExternalLink, CircleDollarSign } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, Download, FileText, AlertTriangle, Building, Calendar, CircleDollarSign, Users, Clock } from 'lucide-react';
+import api from '@/lib/api';
+import { getAlertBadgeInfo } from '@/lib/notificacion-badge.helper';
+
+interface LecturaHistorial {
+  usuarioId: string;
+  nombreCompleto: string;
+  abiertaEn: string;
+}
 
 interface PdfViewerDrawerProps {
   isOpen: boolean;
@@ -21,6 +29,9 @@ interface PdfViewerDrawerProps {
 }
 
 export function PdfViewerDrawer({ isOpen, onClose, notificacion }: PdfViewerDrawerProps) {
+  const [historial, setHistorial] = useState<LecturaHistorial[]>([]);
+  const [loadingHistorial, setLoadingHistorial] = useState(false);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -31,16 +42,24 @@ export function PdfViewerDrawer({ isOpen, onClose, notificacion }: PdfViewerDraw
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Cargar historial de lecturas cuando se abre el drawer
+  useEffect(() => {
+    if (isOpen && notificacion?.id) {
+      setLoadingHistorial(true);
+      api
+        .get(`/notificaciones/${notificacion.id}/historial`)
+        .then((res) => setHistorial(res.data || []))
+        .catch(() => setHistorial([]))
+        .finally(() => setLoadingHistorial(false));
+    } else {
+      setHistorial([]);
+    }
+  }, [isOpen, notificacion?.id]);
+
   if (!isOpen || !notificacion) return null;
 
   const pdfUrl = notificacion.rutaArchivoPdf;
-  const asuntoLower = notificacion.asunto.toLowerCase();
-  const isUrgent =
-    asuntoLower.includes('orden de pago') ||
-    asuntoLower.includes('coactiv') ||
-    asuntoLower.includes('esquela') ||
-    asuntoLower.includes('embargo') ||
-    asuntoLower.includes('conclusi');
+  const alertInfo = getAlertBadgeInfo(notificacion.asunto);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
@@ -54,15 +73,11 @@ export function PdfViewerDrawer({ isOpen, onClose, notificacion }: PdfViewerDraw
         <div className="p-4 sm:p-5 border-b border-white/10 bg-[#1f2937]/50 flex items-start justify-between gap-4 flex-shrink-0">
           <div className="space-y-1.5 min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              {isUrgent ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-rose-500/20 text-rose-400 text-xs font-bold border border-rose-500/30">
-                  <AlertTriangle className="w-3.5 h-3.5" /> ALERTA CRÍTICA
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 text-xs font-semibold border border-blue-500/30">
-                  <FileText className="w-3.5 h-3.5" /> NOTIFICACIÓN SUNAT
-                </span>
-              )}
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs ${alertInfo.badgeClass}`}>
+                {alertInfo.level === 'CRITICA' && <AlertTriangle className="w-3.5 h-3.5" />}
+                {alertInfo.level === 'FISCALIZACION' && <FileText className="w-3.5 h-3.5 text-amber-400" />}
+                {alertInfo.label}
+              </span>
 
               {notificacion.montoExigible && (
                 <span className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 rounded-md flex items-center gap-1">
@@ -137,6 +152,42 @@ export function PdfViewerDrawer({ isOpen, onClose, notificacion }: PdfViewerDraw
             </div>
           )}
         </div>
+
+        {/* Historial de Auditoría — Quién abrió esta notificación */}
+        {(historial.length > 0 || loadingHistorial) && (
+          <div className="flex-shrink-0 border-t border-white/10 bg-[#1f2937]/30 px-5 py-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">
+                Visto por
+              </span>
+            </div>
+            {loadingHistorial ? (
+              <div className="text-xs text-gray-500 animate-pulse">Cargando historial...</div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {historial.map((entrada, i) => (
+                  <div
+                    key={i}
+                    className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-200 text-[11px] font-medium px-2.5 py-1 rounded-full"
+                  >
+                    <span className="font-semibold">{entrada.nombreCompleto}</span>
+                    <span className="text-indigo-400/60">·</span>
+                    <Clock className="w-3 h-3 text-indigo-400" />
+                    <span className="text-indigo-300/70">
+                      {new Date(entrada.abiertaEn).toLocaleString('es-PE', {
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -24,6 +24,9 @@ function BandejaContent() {
     searchTerm,
     startDate,
     endDate,
+    categoriaFilter,
+    setCategoriaFilter,
+    counts,
     retrying,
     setPage,
     setSearchTerm,
@@ -61,7 +64,7 @@ function BandejaContent() {
             Bandeja de Entrada
           </h2>
           <p className="text-gray-400 text-sm mt-1">
-            Notificaciones SUNAT sin leer. Al abrir el PDF, se marcarán como leídas automáticamente.
+            Notificaciones SUNAT sin revisar. Al abrir el PDF, se marcarán como revisadas para todos los usuarios de esta empresa.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -83,7 +86,7 @@ function BandejaContent() {
         </div>
       </div>
 
-      {/* Search & Date Filters */}
+      {/* Search & Date Filters + Categorías de Alertas */}
       <NotificationFilterBar
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
@@ -92,6 +95,9 @@ function BandejaContent() {
         endDate={endDate}
         onEndDateChange={setEndDate}
         empresaFilterId={empresaFilterId}
+        categoriaFilter={categoriaFilter}
+        onCategoriaFilterChange={setCategoriaFilter}
+        counts={counts}
         onClearEmpresaFilter={() => router.push('/dashboard/bandeja')}
         onClearFilters={() => {
           clearFilters();

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
+import { toast } from '@/store/useToastStore';
 
 export const DIAS_MAP = [
   { key: 1, label: 'Lun', nombre: 'Lunes' },
@@ -88,7 +89,7 @@ export function useScheduleConfig(isAdmin: boolean) {
   const toggleDia = (diaKey: number) => {
     if (diasSeleccionados.includes(diaKey)) {
       if (diasSeleccionados.length === 1) {
-        alert('Debe haber al menos un día seleccionado.');
+        toast.warning('Debe haber al menos un día seleccionado.', 'Horarios');
         return;
       }
       setDiasSeleccionados(diasSeleccionados.filter((d) => d !== diaKey));
@@ -100,7 +101,7 @@ export function useScheduleConfig(isAdmin: boolean) {
   const handleAddHora = () => {
     if (!nuevaHora) return;
     if (horasProgramadas.includes(nuevaHora)) {
-      alert('Esta hora ya está en la lista.');
+      toast.warning('Esta hora ya está en la lista.', 'Horarios');
       return;
     }
     const updated = [...horasProgramadas, nuevaHora].sort();
@@ -109,11 +110,12 @@ export function useScheduleConfig(isAdmin: boolean) {
 
   const handleRemoveHora = (horaToRemove: string) => {
     if (horasProgramadas.length === 1) {
-      alert('Debe haber al menos un horario de ejecución programado.');
+      toast.warning('Debe haber al menos un horario de ejecución programado.', 'Horarios');
       return;
     }
     setHorasProgramadas(horasProgramadas.filter((h) => h !== horaToRemove));
   };
+
 
   const handleSaveSchedule = async () => {
     if (horasProgramadas.length === 0) {

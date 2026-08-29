@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Building2 } from 'lucide-react';
+import { toast } from '@/store/useToastStore';
 
 interface EmpresaFormModalProps {
   isOpen: boolean;
@@ -14,7 +15,7 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
   onClose,
   onSubmit,
   initialData,
-  defaultEntidad = 'SUNAT'
+  defaultEntidad,
 }) => {
   const [ruc, setRuc] = useState('');
   const [razonSocial, setRazonSocial] = useState('');
@@ -24,31 +25,29 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
   const [habilitadoSunafil, setHabilitadoSunafil] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      if (initialData) {
-        setRuc(initialData.ruc || '');
-        setRazonSocial(initialData.razonSocial || '');
-        setUsuarioSol(initialData.usuarioSol || '');
-        setClaveSol('');
-        setHabilitadoSunat(initialData.habilitadoSunat !== undefined ? initialData.habilitadoSunat : true);
-        setHabilitadoSunafil(initialData.habilitadoSunafil !== undefined ? initialData.habilitadoSunafil : false);
-      } else {
-        setRuc('');
-        setRazonSocial('');
-        setUsuarioSol('');
-        setClaveSol('');
-        setHabilitadoSunat(defaultEntidad === 'SUNAT');
-        setHabilitadoSunafil(defaultEntidad === 'SUNAFIL');
-      }
+    if (initialData) {
+      setRuc(initialData.ruc || '');
+      setRazonSocial(initialData.razonSocial || '');
+      setUsuarioSol(initialData.usuarioSol || '');
+      setClaveSol('');
+      setHabilitadoSunat(initialData.habilitadoSunat ?? true);
+      setHabilitadoSunafil(initialData.habilitadoSunafil ?? false);
+    } else {
+      setRuc('');
+      setRazonSocial('');
+      setUsuarioSol('');
+      setClaveSol('');
+      setHabilitadoSunat(defaultEntidad === 'SUNAFIL' ? false : true);
+      setHabilitadoSunafil(defaultEntidad === 'SUNAFIL' ? true : false);
     }
-  }, [isOpen, initialData, defaultEntidad]);
+  }, [initialData, isOpen, defaultEntidad]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await onSubmit(initialData?.id || null, {
+      await onSubmit(initialData ? initialData.id : null, {
         ruc,
         razonSocial,
         usuarioSol,
@@ -56,13 +55,14 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
         habilitadoSunafil,
         ...(claveSol ? { claveSol } : {})
       });
+      toast.success(initialData ? 'Empresa actualizada correctamente' : 'Empresa registrada con éxito');
       setRuc('');
       setRazonSocial('');
       setUsuarioSol('');
       setClaveSol('');
       onClose();
-    } catch (error) {
-      alert("Error al guardar la empresa");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Error al guardar la empresa');
     }
   };
 

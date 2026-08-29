@@ -10,8 +10,10 @@ import {
   RefreshCw,
   CheckSquare,
   Square,
+  ShieldAlert,
 } from 'lucide-react';
 import { NotificationItemData } from '../hooks/useNotificationList';
+import { getAlertBadgeInfo } from '@/lib/notificacion-badge.helper';
 
 interface NotificationItemProps {
   notificacion: NotificationItemData;
@@ -39,11 +41,12 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   onRetryPdf,
 }) => {
   const isInbox = mode === 'inbox';
+  const alertInfo = getAlertBadgeInfo(notificacion.asunto);
 
   return (
     <div
-      className={`p-6 flex items-start gap-4 sm:gap-6 transition-colors hover:bg-white/[0.02] cursor-pointer group ${
-        isInbox ? 'bg-blue-500/[0.02]' : ''
+      className={`p-6 flex items-start gap-4 sm:gap-6 transition-all hover:bg-white/[0.03] cursor-pointer group ${
+        alertInfo.borderClass
       } ${isSelected ? 'bg-blue-500/[0.04]' : ''}`}
       onClick={onClick}
     >
@@ -72,20 +75,37 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
         <div
           className={`w-10 h-10 rounded-full flex items-center justify-center border ${
             isInbox
-              ? 'bg-blue-500/20 border-blue-500/30 text-blue-400'
+              ? alertInfo.iconBgClass
               : notificacion.estado === 'SIN_PDF'
               ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
               : 'bg-gray-800 border-white/10 text-gray-500'
           }`}
         >
-          {isInbox ? <Mail className="w-5 h-5" /> : <MailOpen className="w-5 h-5" />}
+          {isInbox ? (
+            alertInfo.level === 'CRITICA' ? (
+              <AlertTriangle className="w-5 h-5 animate-pulse" />
+            ) : (
+              <Mail className="w-5 h-5" />
+            )
+          ) : (
+            <MailOpen className="w-5 h-5" />
+          )}
         </div>
       </div>
 
       {/* Contenido Principal */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Badge de Nivel de Alerta */}
+            <span
+              className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-md ${alertInfo.badgeClass}`}
+            >
+              {alertInfo.level === 'CRITICA' && <AlertTriangle className="w-3 h-3 shrink-0" />}
+              {alertInfo.level === 'FISCALIZACION' && <FileText className="w-3 h-3 shrink-0 text-amber-400" />}
+              {alertInfo.label}
+            </span>
+
             <span className={`font-semibold ${isInbox ? 'text-white' : 'text-gray-300'}`}>
               {notificacion.empresa.razonSocial}
             </span>
@@ -98,12 +118,12 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
               </span>
             )}
             {notificacion.expedienteCoactivo && (
-              <span className="text-xs font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
+              <span className="text-xs font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-md flex items-center gap-1">
                 <FileText className="w-3 h-3 text-amber-400" /> Exp: {notificacion.expedienteCoactivo}
               </span>
             )}
             {!isInbox && notificacion.estado === 'SIN_PDF' && (
-              <span className="text-xs font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2.5 py-0.5 rounded-md">
                 SIN PDF
               </span>
             )}

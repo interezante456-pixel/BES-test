@@ -1,5 +1,15 @@
 import React from 'react';
-import { Search as SearchIcon, X as XIcon, FilterX as FilterIcon } from 'lucide-react';
+import {
+  Search as SearchIcon,
+  X as XIcon,
+  FilterX as FilterIcon,
+  AlertTriangle,
+  FileText,
+  CircleDollarSign,
+  Layers,
+} from 'lucide-react';
+
+export type CategoriaAlertaFilter = 'ALL' | 'CRITICA' | 'FISCALIZACION' | 'DEUDA';
 
 interface NotificationFilterBarProps {
   searchTerm: string;
@@ -11,6 +21,14 @@ interface NotificationFilterBarProps {
   empresaFilterId?: string | null;
   onClearEmpresaFilter?: () => void;
   onClearFilters: () => void;
+  categoriaFilter?: CategoriaAlertaFilter;
+  onCategoriaFilterChange?: (cat: CategoriaAlertaFilter) => void;
+  counts?: {
+    total: number;
+    criticas: number;
+    fiscalizacion: number;
+    deuda: number;
+  };
 }
 
 export const NotificationFilterBar: React.FC<NotificationFilterBarProps> = ({
@@ -23,11 +41,86 @@ export const NotificationFilterBar: React.FC<NotificationFilterBarProps> = ({
   empresaFilterId,
   onClearEmpresaFilter,
   onClearFilters,
+  categoriaFilter = 'ALL',
+  onCategoriaFilterChange,
+  counts,
 }) => {
-  const hasActiveFilters = Boolean(searchTerm || startDate || endDate || empresaFilterId);
+  const hasActiveFilters = Boolean(
+    searchTerm || startDate || endDate || empresaFilterId || categoriaFilter !== 'ALL',
+  );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Botones de Filtro Rápido por Categoría de Alerta */}
+      {onCategoriaFilterChange && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            onClick={() => onCategoriaFilterChange('ALL')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              categoriaFilter === 'ALL'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                : 'bg-[#111827] text-gray-400 hover:text-white hover:bg-white/5 border border-white/5'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Todas</span>
+            {counts && <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">{counts.total}</span>}
+          </button>
+
+          <button
+            onClick={() => onCategoriaFilterChange('CRITICA')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              categoriaFilter === 'CRITICA'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                : 'bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 border border-rose-500/20'
+            }`}
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+            <span>🔴 Críticas / Coactivas</span>
+            {counts && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-900/40 text-rose-200 border border-rose-500/30">
+                {counts.criticas}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => onCategoriaFilterChange('FISCALIZACION')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              categoriaFilter === 'FISCALIZACION'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                : 'bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border border-amber-500/20'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5 text-amber-400" />
+            <span>🟡 Fiscalización / Requerimientos</span>
+            {counts && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-900/40 text-amber-200 border border-amber-500/30">
+                {counts.fiscalizacion}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => onCategoriaFilterChange('DEUDA')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              categoriaFilter === 'DEUDA'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                : 'bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/20'
+            }`}
+          >
+            <CircleDollarSign className="w-3.5 h-3.5 text-emerald-400" />
+            <span>💰 Con Deuda Exigible</span>
+            {counts && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-900/40 text-emerald-200 border border-emerald-500/30">
+                {counts.deuda}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Barra de Búsqueda y Rango de Fechas */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#111827] p-4 rounded-3xl border border-white/5">
         {/* Buscador de Texto (6 columnas) */}
         <div className="md:col-span-6 flex items-center gap-3 bg-white/[0.02] px-4 py-1.5 rounded-2xl border border-white/5">

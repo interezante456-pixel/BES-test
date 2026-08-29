@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, MailOpen, Clock, FileText, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
 import api from '@/lib/api';
+import { toast } from '@/store/useToastStore';
 
 interface NotificationListProps {
   notifications: any[];
@@ -24,13 +25,15 @@ export const NotificationList: React.FC<NotificationListProps> = ({
     setRetrying((prev) => ({ ...prev, [notifId]: true }));
     try {
       await api.post(`/scraper/retry-pdf/${notifId}`);
+      toast.success('Documento PDF recuperado con éxito');
       onRefresh?.();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'No se pudo recuperar el PDF. Inténtalo más tarde.');
+      toast.error(err?.response?.data?.message || 'No se pudo recuperar el PDF. Inténtalo más tarde.');
     } finally {
       setRetrying((prev) => ({ ...prev, [notifId]: false }));
     }
   };
+
 
   return (
     <div className="bg-[#111827] rounded-3xl border border-white/5 overflow-hidden">

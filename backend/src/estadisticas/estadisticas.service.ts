@@ -76,10 +76,11 @@ export class EstadisticasService {
       }
     }
 
+    // sinLeer global: cuenta las notificaciones que nadie de la empresa ha abierto aún
     const sinLeer = await this.prisma.notificacion.count({
       where: {
         empresaId: { in: empresaIds },
-        lecturas: { none: { usuarioId } },
+        leidoGlobal: false,
       },
     });
 

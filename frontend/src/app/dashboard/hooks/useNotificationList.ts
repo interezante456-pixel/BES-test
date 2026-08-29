@@ -1,7 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { getSocket } from '@/lib/socket';
+import { getAlertBadgeInfo } from '@/lib/notificacion-badge.helper';
+import { CategoriaAlertaFilter } from '../components/NotificationFilterBar';
+import { toast } from '@/store/useToastStore';
+
 
 export interface NotificationEmpresa {
   id?: string;
@@ -26,13 +31,14 @@ interface UseNotificationListOptions {
 }
 
 export function useNotificationList({ endpoint, empresaFilterId }: UseNotificationListOptions) {
-  const [notificaciones, setNotificaciones] = useState<NotificationItemData[]>([]);
+  const [rawNotificaciones, setRawNotificaciones] = useState<NotificationItemData[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, lastPage: 1 });
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [categoriaFilter, setCategoriaFilter] = useState<CategoriaAlertaFilter>('ALL');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [retrying, setRetrying] = useState<Record<string, boolean>>({});
 
@@ -41,6 +47,42 @@ export function useNotificationList({ endpoint, empresaFilterId }: UseNotificati
   const { decrementSinLeer, fetchStats } = useNotificationStore();
 
   const canDelete = user?.rol === 'SUPER_ADMIN' || user?.rol === 'ADMIN';
+
+  // Conteos de categorías en base a las notificaciones cargadas
+  const counts = useMemo(() => {
+    let criticas = 0;
+    let fiscalizacion = 0;
+    let deuda = 0;
+
+    for (const n of rawNotificaciones) {
+      const info = getAlertBadgeInfo(n.asunto);
+      if (info.level === 'CRITICA') criticas++;
+      if (info.level === 'FISCALIZACION') fiscalizacion++;
+      if (n.montoExigible) deuda++;
+    }
+
+    return {
+      total: rawNotificaciones.length,
+      criticas,
+      fiscalizacion,
+      deuda,
+    };
+  }, [rawNotificaciones]);
+
+  // Lista filtrada según la pestaña de categoría seleccionada
+  const notificaciones = useMemo(() => {
+    if (categoriaFilter === 'ALL') return rawNotificaciones;
+    if (categoriaFilter === 'CRITICA') {
+      return rawNotificaciones.filter((n) => getAlertBadgeInfo(n.asunto).level === 'CRITICA');
+    }
+    if (categoriaFilter === 'FISCALIZACION') {
+      return rawNotificaciones.filter((n) => getAlertBadgeInfo(n.asunto).level === 'FISCALIZACION');
+    }
+    if (categoriaFilter === 'DEUDA') {
+      return rawNotificaciones.filter((n) => Boolean(n.montoExigible));
+    }
+    return rawNotificaciones;
+  }, [rawNotificaciones, categoriaFilter]);
 
   const fetchNotificaciones = useCallback(async () => {
     setLoading(true);
@@ -55,7 +97,7 @@ export function useNotificationList({ endpoint, empresaFilterId }: UseNotificati
       if (endDate) params.append('endDate', endDate);
 
       const res = await api.get(`${endpoint}?${params.toString()}`);
-      setNotificaciones(res.data.data || []);
+      setRawNotificaciones(res.data.data || []);
       setMeta(res.data.meta || { total: 0, page: 1, lastPage: 1 });
       setSelectedIds([]);
     } catch (error) {
@@ -68,6 +110,42 @@ export function useNotificationList({ endpoint, empresaFilterId }: UseNotificati
   useEffect(() => {
     if (isAuthenticated) fetchNotificaciones();
   }, [isAuthenticated, fetchNotificaciones]);
+
+  // Sincronización en tiempo real vía WebSockets
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const socket = getSocket();
+
+    const handleNotificacionLeida = (data: { id: string }) => {
+      if (endpoint === '/notificaciones') {
+        // En bandeja: remover la notificación inmediatamente de la vista en vivo
+        setRawNotificaciones((prev) => prev.filter((n) => n.id !== data.id));
+        setMeta((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
+        decrementSinLeer();
+      } else if (endpoint === '/notificaciones/archivo') {
+        // En archivo: refrescar silenciosamente para incluir la recién leída
+        fetchNotificaciones();
+      }
+    };
+
+    const handleTodasLeidas = () => {
+      if (endpoint === '/notificaciones') {
+        setRawNotificaciones([]);
+        setMeta((prev) => ({ ...prev, total: 0 }));
+      } else if (endpoint === '/notificaciones/archivo') {
+        fetchNotificaciones();
+      }
+      fetchStats();
+    };
+
+    socket.on('notificacion:leida', handleNotificacionLeida);
+    socket.on('notificacion:todas_leidas', handleTodasLeidas);
+
+    return () => {
+      socket.off('notificacion:leida', handleNotificacionLeida);
+      socket.off('notificacion:todas_leidas', handleTodasLeidas);
+    };
+  }, [isAuthenticated, endpoint, decrementSinLeer, fetchStats, fetchNotificaciones]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -87,7 +165,7 @@ export function useNotificationList({ endpoint, empresaFilterId }: UseNotificati
   const markAsRead = async (id: string) => {
     try {
       await api.patch(`/notificaciones/${id}/read`);
-      setNotificaciones((prev) => prev.filter((n) => n.id !== id));
+      setRawNotificaciones((prev) => prev.filter((n) => n.id !== id));
       decrementSinLeer();
     } catch (error) {
       console.error('Error marking as read', error);
@@ -103,7 +181,7 @@ export function useNotificationList({ endpoint, empresaFilterId }: UseNotificati
   const deleteNotification = async (id: string) => {
     try {
       await api.delete(`/notificaciones/${id}`);
-      setNotificaciones((prev) => prev.filter((n) => n.id !== id));
+      setRawNotificaciones((prev) => prev.filter((n) => n.id !== id));
       setSelectedIds((prev) => prev.filter((item) => item !== id));
     } catch (error) {
       console.error('Error deleting notification', error);
@@ -114,7 +192,7 @@ export function useNotificationList({ endpoint, empresaFilterId }: UseNotificati
     if (selectedIds.length === 0) return;
     try {
       await api.post('/notificaciones/bulk-delete', { ids: selectedIds });
-      setNotificaciones((prev) => prev.filter((n) => !selectedIds.includes(n.id)));
+      setRawNotificaciones((prev) => prev.filter((n) => !selectedIds.includes(n.id)));
       setSelectedIds([]);
     } catch (error) {
       console.error('Error bulk deleting notifications', error);
@@ -126,16 +204,21 @@ export function useNotificationList({ endpoint, empresaFilterId }: UseNotificati
     try {
       const res = await api.post(`/scraper/retry-pdf/${notifId}`, {}, { timeout: 120000 });
       if (res.data?.success) {
+        toast.success('Documento PDF recuperado con éxito desde SUNAT', 'Recuperación PDF');
         await fetchNotificaciones();
       } else {
-        alert(res.data?.message || 'No se pudo recuperar el PDF desde SUNAT. Es posible que el documento haya expirado.');
+        toast.error(
+          res.data?.message || 'No se pudo recuperar el PDF desde SUNAT. Es posible que el documento haya expirado.',
+          'Error PDF'
+        );
       }
     } catch {
-      alert('No se pudo recuperar el PDF en este momento. Inténtalo más tarde.');
+      toast.error('No se pudo recuperar el PDF en este momento. Inténtalo más tarde.', 'Error de Conexión');
     } finally {
       setRetrying((prev) => ({ ...prev, [notifId]: false }));
     }
   };
+
 
   const allSelected =
     notificaciones.length > 0 && notificaciones.every((n) => selectedIds.includes(n.id));
@@ -160,6 +243,7 @@ export function useNotificationList({ endpoint, empresaFilterId }: UseNotificati
     setSearchTerm('');
     setStartDate('');
     setEndDate('');
+    setCategoriaFilter('ALL');
   };
 
   return {
@@ -170,6 +254,9 @@ export function useNotificationList({ endpoint, empresaFilterId }: UseNotificati
     searchTerm,
     startDate,
     endDate,
+    categoriaFilter,
+    setCategoriaFilter,
+    counts,
     selectedIds,
     allSelected,
     canDelete,

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { X, UserPlus, Mail, Shield, CheckSquare, Square } from 'lucide-react';
 import { ModuloAcceso } from '@/types/user';
+import { toast } from '@/store/useToastStore';
+import UserCreatedModal from './UserCreatedModal';
 
 interface UserFormProps {
   isOpen: boolean;
@@ -28,24 +30,21 @@ const EMPTY_USER = {
 export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }) => {
   const [newUser, setNewUser] = useState(EMPTY_USER);
   const [loading, setLoading] = useState(false);
+  const [createdUserData, setCreatedUserData] = useState<{
+    nombres: string;
+    apellidos: string;
+    email: string;
+    dni: string;
+    password?: string;
+  } | null>(null);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
   const getAutoEmailPreview = () => {
-    const cleanStr = (str: string) =>
-      str
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-zA-Z0-9]/g, '')
-        .toLowerCase();
-
-    // Iniciales de TODOS los nombres + iniciales de TODOS los apellidos
-    const initNombres = newUser.nombres.trim().split(/\s+/)
-      .map(w => cleanStr(w).charAt(0)).join('');
-    const initApellidos = newUser.apellidos.trim().split(/\s+/)
-      .map(w => cleanStr(w).charAt(0)).join('');
-    const cleanDni = newUser.dni.trim().replace(/\D/g, '');
-
-    if (!initNombres && !initApellidos && !cleanDni) return 'Se autogenerará al escribir...';
-    return `${initNombres}${initApellidos}${cleanDni}@oracon.com`;
+    const firstInitial = newUser.nombres.trim().charAt(0).toLowerCase();
+    const lastName = newUser.apellidos.trim().split(/\s+/)[0]?.toLowerCase() || '';
+    const dni = newUser.dni.trim();
+    if (!firstInitial && !lastName && !dni) return 'ejemplo@oracon.com';
+    return `${firstInitial}${lastName}${dni}@oracon.com`;
   };
 
   const toggleModule = (moduleKey: ModuloAcceso) => {
@@ -61,18 +60,26 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newUser.dni.trim().length !== 8) {
-      alert('El DNI debe contener exactamente 8 dígitos.');
+      toast.warning('El DNI debe contener exactamente 8 dígitos.', 'Validación de DNI');
       return;
     }
     const emailPreview = getAutoEmailPreview();
+    const tempUserData = {
+      nombres: newUser.nombres,
+      apellidos: newUser.apellidos,
+      email: emailPreview,
+      dni: newUser.dni,
+      password: newUser.password,
+    };
+
     setLoading(true);
     try {
       await onSubmit(newUser);
-      alert(`✅ Usuario creado con éxito.\n\n📧 Correo asignado: ${emailPreview}\n🔑 Contraseña: (la ingresada)`);
+      setCreatedUserData(tempUserData);
+      setIsSuccessModalOpen(true);
       setNewUser(EMPTY_USER);
-      onCancel();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error al crear usuario');
+      toast.error(err.response?.data?.message || 'Error al crear usuario', 'Error');
     } finally {
       setLoading(false);
     }
@@ -83,13 +90,13 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
     onCancel();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleCancel} />
+    <>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleCancel} />
+          <div className="relative w-full max-w-xl bg-[#111827] rounded-3xl border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
-      <div className="relative w-full max-w-xl bg-[#111827] rounded-3xl border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-white/5 flex items-center justify-between bg-indigo-500/5">
           <div className="flex items-center gap-3">
@@ -251,5 +258,18 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
         </form>
       </div>
     </div>
+  )}
+
+  <UserCreatedModal
+    isOpen={isSuccessModalOpen}
+    onClose={() => {
+      setIsSuccessModalOpen(false);
+      setCreatedUserData(null);
+      onCancel();
+    }}
+    userData={createdUserData}
+  />
+</>
   );
 };
+

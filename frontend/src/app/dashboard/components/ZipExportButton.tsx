@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Download, Loader2, FileArchive } from 'lucide-react';
 import JSZip from 'jszip';
+import { toast } from '@/store/useToastStore';
 
 interface ZipExportButtonProps {
   notificaciones: {
@@ -19,9 +20,10 @@ export function ZipExportButton({ notificaciones, empresaNombre = 'BES_Notificac
   const handleDownloadZip = async () => {
     const validPdfs = notificaciones.filter((n) => n.rutaArchivoPdf);
     if (validPdfs.length === 0) {
-      alert('No hay archivos PDF disponibles para descargar en la selección.');
+      toast.warning('No hay archivos PDF disponibles para descargar en la selección.', 'Descarga ZIP');
       return;
     }
+
 
     setDownloading(true);
     try {
@@ -52,13 +54,15 @@ export function ZipExportButton({ notificaciones, empresaNombre = 'BES_Notificac
       link.href = URL.createObjectURL(content);
       link.download = `${empresaNombre}_PDFs_${new Date().toISOString().slice(0, 10)}.zip`;
       link.click();
+      toast.success('Archivo ZIP generado y descargado correctamente', 'Descarga Completa');
     } catch (error) {
       console.error('Error generando archivo ZIP:', error);
-      alert('Ocurrió un error al empaquetar el archivo ZIP.');
+      toast.error('Ocurrió un error al empaquetar el archivo ZIP.', 'Error ZIP');
     } finally {
       setDownloading(false);
     }
   };
+
 
   return (
     <button

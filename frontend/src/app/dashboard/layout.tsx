@@ -11,6 +11,9 @@ import { getSocket } from '@/lib/socket';
 import { UserProfileModal } from './components/UserProfileModal';
 
 import { OraconLogo } from '@/components/OraconLogo';
+import ToastContainer from '@/components/ui/ToastContainer';
+import SyncProgressWidget from '@/components/SyncProgressWidget';
+import { useSyncStore } from '@/store/useSyncStore';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, logout } = useAuthStore();
@@ -29,7 +32,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setNotifLoading(true);
       try {
         const res = await api.get('/notificaciones');
-        setRecentNotifications(res.data.slice(0, 5));
+        const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        setRecentNotifications(list.slice(0, 5));
       } catch (error) {
         console.error("Error fetching recent notifications", error);
       } finally {
@@ -62,12 +66,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       fetchStats(); // Refrescar estadísticas igualmente
     };
 
+
+    const handleNotificacionLeidaGlobal = () => {
+      fetchStats(); // Refrescar estadísticas y badges en tiempo real
+    };
+
     socket.on(`sync-finished-${user.id}`, handleSyncFinished);
     socket.on(`sync-error-${user.id}`, handleSyncError);
+    socket.on('notificacion:leida', handleNotificacionLeidaGlobal);
+    socket.on('notificacion:todas_leidas', handleNotificacionLeidaGlobal);
 
     return () => {
       socket.off(`sync-finished-${user.id}`, handleSyncFinished);
       socket.off(`sync-error-${user.id}`, handleSyncError);
+      socket.off('notificacion:leida', handleNotificacionLeidaGlobal);
+      socket.off('notificacion:todas_leidas', handleNotificacionLeidaGlobal);
     };
   }, [isAuthenticated, user, router, fetchStats]);
 
@@ -409,6 +422,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8">
           {children}
         </div>
+
+        <ToastContainer />
+        <SyncProgressWidget />
       </main>
     </div>
   );

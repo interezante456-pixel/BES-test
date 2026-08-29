@@ -1,6 +1,6 @@
 "use client";
 
-import { X, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, RefreshCw, CheckCircle2, HelpCircle } from 'lucide-react';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -9,7 +9,8 @@ interface ConfirmModalProps {
   title: string;
   message: string;
   confirmText?: string;
-  confirmVariant?: 'danger' | 'warning' | 'primary';
+  cancelText?: string;
+  confirmVariant?: 'danger' | 'warning' | 'primary' | 'sync' | 'success';
 }
 
 export default function ConfirmModal({ 
@@ -19,31 +20,62 @@ export default function ConfirmModal({
   title, 
   message,
   confirmText,
+  cancelText = 'Cancelar',
   confirmVariant = 'danger'
 }: ConfirmModalProps) {
   if (!isOpen) return null;
 
+  const isSync = confirmVariant === 'sync';
   const isWarning = confirmVariant === 'warning';
   const isPrimary = confirmVariant === 'primary';
-  const defaultText = confirmText ?? (title.toLowerCase().includes('eliminar') ? 'Sí, Eliminar' : 'Confirmar');
+  const isSuccess = confirmVariant === 'success';
 
-  const iconBg = isWarning
+  const defaultText = confirmText ?? (
+    isSync 
+      ? 'Sí, Sincronizar' 
+      : title.toLowerCase().includes('eliminar') 
+      ? 'Sí, Eliminar' 
+      : 'Confirmar'
+  );
+
+  const iconBg = isSync
+    ? 'bg-orange-500/10 border-orange-500/20'
+    : isWarning
     ? 'bg-amber-500/10 border-amber-500/20'
+    : isSuccess
+    ? 'bg-emerald-500/10 border-emerald-500/20'
     : isPrimary
     ? 'bg-blue-500/10 border-blue-500/20'
     : 'bg-red-500/10 border-red-500/20';
 
-  const iconColor = isWarning
-    ? 'text-amber-500'
+  const iconColor = isSync
+    ? 'text-orange-400'
+    : isWarning
+    ? 'text-amber-400'
+    : isSuccess
+    ? 'text-emerald-400'
     : isPrimary
-    ? 'text-blue-500'
-    : 'text-red-500';
+    ? 'text-blue-400'
+    : 'text-red-400';
 
-  const btnBg = isWarning
+  const btnBg = isSync
+    ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/30'
+    : isWarning
     ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
+    : isSuccess
+    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'
     : isPrimary
     ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
     : 'bg-red-500 hover:bg-red-600 shadow-red-500/20';
+
+  const IconComponent = isSync 
+    ? RefreshCw 
+    : isSuccess 
+    ? CheckCircle2 
+    : isPrimary 
+    ? HelpCircle 
+    : AlertTriangle;
+
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -60,9 +92,9 @@ export default function ConfirmModal({
             <X className="w-5 h-5" />
           </button>
 
-          {/* Warning Icon */}
+          {/* Icon */}
           <div className={`mx-auto w-16 h-16 rounded-2xl flex items-center justify-center border mb-4 ${iconBg}`}>
-            <AlertTriangle className={`w-8 h-8 ${iconColor}`} />
+            <IconComponent className={`w-8 h-8 ${iconColor} ${isSync ? 'animate-spin' : ''}`} />
           </div>
 
           <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
@@ -75,7 +107,7 @@ export default function ConfirmModal({
               onClick={onClose}
               className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-semibold transition-all border border-white/5"
             >
-              Cancelar
+              {cancelText}
             </button>
             <button
               onClick={() => {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Users, Shield, Building2 } from 'lucide-react';
+import ConfirmModal from '@/components/ConfirmModal';
 import { useAdmin } from './hooks/useAdmin';
 import { useAuthStore } from '@/store/useAuthStore';
 import { UserList } from './components/UserList';
@@ -22,6 +23,8 @@ export default function AdminPage() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [assigningUser, setAssigningUser] = useState<any>(null); // usuario para asignar empresas
+  const [userToDelete, setUserToDelete] = useState<any | null>(null);
+
 
   const {
     usuarios,
@@ -67,12 +70,16 @@ export default function AdminPage() {
             usuarios={usuarios}
             empresasAdmin={empresasAdmin}
             callerRol={callerRol}
-            onDelete={deleteUser}
+            onDelete={(id) => {
+              const u = usuarios.find((x) => x.id === id);
+              setUserToDelete(u || { id, nombres: 'este usuario', apellidos: '' });
+            }}
             onEdit={setEditingUser}
             onDetail={setDetailUserId}
             onAssign={(id) => setAssigningUser(usuarios.find(u => u.id === id) || null)}
             onCreateOpen={() => setShowCreateForm(true)}
           />
+
         </>
       )}
 
@@ -121,6 +128,24 @@ export default function AdminPage() {
         loading={loadingAsig}
         onToggle={toggleUserForCompany}
       />
+
+      {/* Modal Confirmar Eliminar Usuario */}
+      <ConfirmModal
+        isOpen={!!userToDelete}
+        title="¿Eliminar Usuario?"
+        message={`¿Estás seguro de que deseas eliminar a ${userToDelete?.nombres || ''} ${userToDelete?.apellidos || ''}? Esta acción revocará todos sus accesos y no se puede deshacer.`}
+        confirmText="Sí, Eliminar"
+        cancelText="Cancelar"
+        confirmVariant="danger"
+        onConfirm={async () => {
+          if (userToDelete?.id) {
+            await deleteUser(userToDelete.id);
+            setUserToDelete(null);
+          }
+        }}
+        onClose={() => setUserToDelete(null)}
+      />
     </div>
   );
 }
+

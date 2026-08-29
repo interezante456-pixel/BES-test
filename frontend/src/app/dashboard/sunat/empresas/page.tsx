@@ -5,6 +5,7 @@ import { Plus, Search, RefreshCw, Download, Upload } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { ExcelImportModal } from '@/components/ExcelImportModal';
 import { exportToExcel, readExcelFile, getVal } from '@/lib/excelUtils';
+import { toast } from '@/store/useToastStore';
 import { useEmpresas } from '../../empresas/hooks/useEmpresas';
 import { EmpresaTable } from '../../empresas/components/EmpresaTable';
 import { EmpresaFormModal } from '../../empresas/components/EmpresaFormModal';
@@ -17,12 +18,14 @@ export default function SunatEmpresasPage() {
   const [empresaToDelete, setEmpresaToDelete] = useState<string | null>(null);
   const [empresaToToggle, setEmpresaToToggle] = useState<any | null>(null);
   const [isToggleModalOpen, setIsToggleModalOpen] = useState(false);
+  const [isSyncConfirmOpen, setIsSyncConfirmOpen] = useState(false);
   const [sunatEmpresa, setSunatEmpresa] = useState<any | null>(null);
   const [isSunatModalOpen, setIsSunatModalOpen] = useState(false);
   const [editingEmpresa, setEditingEmpresa] = useState<any | null>(null);
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<any[]>([]);
+
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,7 +97,7 @@ export default function SunatEmpresasPage() {
       setIsImportModalOpen(true);
     } catch (err) {
       console.error('Error reading excel file:', err);
-      alert('Error al leer el archivo Excel.');
+      toast.error('Error al leer el archivo Excel.');
     } finally {
       e.target.value = '';
     }
@@ -150,14 +153,18 @@ export default function SunatEmpresasPage() {
     setImportPreview([]);
 
     if (errorDetails.length > 0) {
-      alert(
-        `Importación finalizada.\n\n✅ Exitosas: ${success}\n❌ Errores: ${errors}\n\nDetalles:\n` +
-          errorDetails.slice(0, 8).join('\n')
+      toast.warning(
+        `Importación finalizada. Exitosas: ${success}, Errores: ${errors}. Revisa los datos de las empresas con falla.`,
+        'Resultado de Importación'
       );
     } else {
-      alert(`✅ Importación completada con éxito: ${success} empresas registradas/actualizadas.`);
+      toast.success(
+        `Importación completada con éxito: ${success} empresas registradas/actualizadas.`,
+        'Importación Exitosa'
+      );
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -212,9 +219,9 @@ export default function SunatEmpresasPage() {
 
           {/* Sincronizar Todo */}
           <button
-            onClick={handleSyncAll}
+            onClick={() => setIsSyncConfirmOpen(true)}
             disabled={syncingAll || sunatEmpresas.length === 0}
-            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-lg shadow-orange-500/20 transition-all disabled:opacity-50 whitespace-nowrap"
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-lg shadow-orange-500/20 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${syncingAll ? 'animate-spin' : ''}`} />
             <span>{syncingAll ? 'Sincronizando...' : 'Sincronizar Todo'}</span>
@@ -328,16 +335,35 @@ export default function SunatEmpresasPage() {
         confirmVariant={empresaToToggle?.activo ? 'warning' : 'primary'}
         onConfirm={async () => {
           if (empresaToToggle) {
-            await toggleEmpresaActivo(empresaToToggle.id, !empresaToToggle.activo);
+            await toggleEmpresaActivo(empresaToToggle.id, empresaToToggle.activo ?? true);
             setIsToggleModalOpen(false);
             setEmpresaToToggle(null);
           }
         }}
+
         onClose={() => {
           setIsToggleModalOpen(false);
           setEmpresaToToggle(null);
         }}
       />
+
+      {/* Modal Confirmar Sincronizar Todo */}
+      <ConfirmModal
+        isOpen={isSyncConfirmOpen}
+        title="¿Iniciar Sincronización Masiva?"
+        message={`Se iniciará la sincronización en segundo plano de las ${
+          sunatEmpresas.filter((e) => e.activo !== false).length
+        } empresas activas en SUNAT Buzón SOL. Podrás seguir el avance en tiempo real en la pantalla.`}
+        confirmText="Sí, Sincronizar Todo"
+        cancelText="No, Cancelar"
+        confirmVariant="sync"
+        onConfirm={() => {
+          setIsSyncConfirmOpen(false);
+          handleSyncAll();
+        }}
+        onClose={() => setIsSyncConfirmOpen(false)}
+      />
     </div>
   );
 }
+

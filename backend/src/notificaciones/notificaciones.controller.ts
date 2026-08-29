@@ -110,16 +110,22 @@ export class NotificacionesController {
     );
   }
 
-  /** Marcar una notificación como leída (solo para este usuario) */
+  /** Marcar una notificación como leída globalmente (todos dejarán de verla en bandeja) */
   @Patch(':id/read')
   markAsRead(@Param('id') id: string, @Request() req: any) {
     return this.notificacionesService.markAsRead(id, req.user.id);
   }
 
-  /** Marcar TODAS como leídas (solo para este usuario) */
+  /** Marcar TODAS como leídas globalmente */
   @Patch('mark-all-read')
   markAllAsRead(@Request() req: any) {
     return this.notificacionesService.markAllAsRead(req.user.id, req.user.rol);
+  }
+
+  /** Historial de auditoría: quién y cuándo abrió una notificación */
+  @Get(':id/historial')
+  getReadHistory(@Param('id') id: string) {
+    return this.notificacionesService.getReadHistory(id);
   }
 
   /** Eliminar múltiples notificaciones (SUPER_ADMIN/ADMIN) */

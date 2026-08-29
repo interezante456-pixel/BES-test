@@ -93,13 +93,20 @@ model Notificacion {
   trabajadoresIncorporados Int?
   pdfDescargado            Boolean               @default(false)
   metadataExtra            Json?
+
+  // Lectura Global: cuando cualquier usuario abre la notificación, se marca para todos
+  leidoGlobal        Boolean   @default(false)
+  leidoEn            DateTime?            // Timestamp de la primera lectura
+  leidoPorId         String?              // ID del primer usuario que la abrió
+  leidoPorNombre     String?              // Nombre para mostrar sin JOIN
   
   empresa            Empresa               @relation(fields: [empresaId], references: [id])
-  lecturas           NotificacionLectura[]
+  lecturas           NotificacionLectura[] // Bitácora de auditoría: todos los que la abrieron
 
   // B4: Índices compuestos para acelerar queries frecuentes del dashboard y bandeja
   @@index([empresaId, fechaMensaje])
   @@index([empresaId, estado])
+  @@index([empresaId, leidoGlobal])
   @@index([origen, moduloSunafil])
   @@index([createdAt])
 }
