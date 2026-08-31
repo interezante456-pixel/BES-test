@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Building2,
@@ -13,19 +13,28 @@ import {
   ExternalLink,
   MapPin,
 } from 'lucide-react';
+import { NotifGestionPanel } from '../../components/NotifGestionPanel';
 
 interface SunafilDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   notificacion: any | null;
+  onNotificacionUpdated?: (updated: any) => void;
 }
 
 export const SunafilDetailDrawer: React.FC<SunafilDetailDrawerProps> = ({
   isOpen,
   onClose,
   notificacion,
+  onNotificacionUpdated,
 }) => {
-  if (!isOpen || !notificacion) return null;
+  const [currentNotif, setCurrentNotif] = useState<any>(notificacion);
+
+  useEffect(() => {
+    setCurrentNotif(notificacion);
+  }, [notificacion]);
+
+  if (!isOpen || !currentNotif) return null;
 
   const renderFecha = (d?: string | Date | null) => {
     if (!d) return 'No registrada';
@@ -150,12 +159,12 @@ export const SunafilDetailDrawer: React.FC<SunafilDetailDrawerProps> = ({
           )}
 
           {/* Trabajadores incorporados si aplica */}
-          {notificacion.trabajadoresIncorporados != null && (
+          {currentNotif.trabajadoresIncorporados != null && (
             <div className="bg-purple-950/20 border border-purple-500/20 rounded-2xl p-3.5 flex items-center gap-3">
               <Users className="w-5 h-5 text-purple-400" />
               <div>
                 <div className="text-xs font-bold text-purple-300">
-                  {notificacion.trabajadoresIncorporados} Trabajadores Involucrados
+                  {currentNotif.trabajadoresIncorporados} Trabajadores Involucrados
                 </div>
                 <div className="text-[11px] text-gray-400">
                   Alerta laboral sobre incorporación a planilla.
@@ -163,6 +172,17 @@ export const SunafilDetailDrawer: React.FC<SunafilDetailDrawerProps> = ({
               </div>
             </div>
           )}
+
+          {/* Panel de Gestión Interna y Seguimiento */}
+          <div className="pt-2">
+            <NotifGestionPanel
+              notificacion={currentNotif}
+              onUpdated={(updated) => {
+                setCurrentNotif(updated);
+                if (onNotificacionUpdated) onNotificacionUpdated(updated);
+              }}
+            />
+          </div>
         </div>
 
         {/* Footer */}

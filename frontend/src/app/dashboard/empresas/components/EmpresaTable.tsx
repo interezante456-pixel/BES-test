@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, RefreshCw, Edit2, Trash2, Clock, Bell, Power, ExternalLink } from 'lucide-react';
+import { Building2, RefreshCw, Edit2, Trash2, Clock, Bell, Power, ExternalLink, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface EmpresaTableProps {
@@ -161,6 +161,14 @@ export const EmpresaTable: React.FC<EmpresaTableProps> = ({
                       title={isDeshabilitado ? "Empresa deshabilitada" : "Sincronizar"}
                     >
                       <RefreshCw className={`w-4 h-4 ${syncingEmpresas[emp.id] ? 'animate-spin' : ''}`} />
+                    </button>
+
+                    <button 
+                      onClick={() => router.push(`/dashboard/empresas/${emp.id}/perfil`)}
+                      className="p-2 bg-white/5 border border-white/10 text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/20 rounded-lg transition-all"
+                      title="Ver Perfil 360° y Línea de Tiempo"
+                    >
+                      <BarChart3 className="w-4 h-4" />
                     </button>
 
                     <button 

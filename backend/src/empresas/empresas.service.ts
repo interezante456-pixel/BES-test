@@ -203,4 +203,134 @@ export class EmpresasService {
     });
     return { reset: result.count };
   }
+
+  /**
+   * PERFIL 360° DE EMPRESA: Consolida el estado completo, analítica histórica,
+   * distribución por origen/módulo y línea de tiempo de notificaciones.
+   */
+  async getPerfil(empresaId: string, usuarioId: string, rol: string) {
+    const empresa = await this.prisma.empresa.findUnique({
+      where: { id: empresaId },
+      include: {
+        asignaciones: {
+          include: {
+            usuario: { select: { id: true, nombres: true, apellidos: true, email: true, rol: true } },
+          },
+        },
+      },
+    });
+
+    if (!empresa) {
+      throw new BadRequestException('Empresa no encontrada');
+    }
+
+    // Verificar permisos si no es ADMIN/SUPER_ADMIN
+    if (rol !== 'SUPER_ADMIN' && rol !== 'ADMIN') {
+      const tieneAcceso = empresa.asignaciones.some((a) => a.usuarioId === usuarioId);
+      if (!tieneAcceso && empresa.usuarioId !== usuarioId) {
+        throw new BadRequestException('No tienes acceso a esta empresa');
+      }
+    }
+
+    const [
+      totalNotificaciones,
+      sinLeer,
+      sinPdf,
+      notificacionesAll,
+      lineaTiempo,
+    ] = await Promise.all([
+      this.prisma.notificacion.count({ where: { empresaId } }),
+      this.prisma.notificacion.count({ where: { empresaId, leidoGlobal: false } }),
+      this.prisma.notificacion.count({ where: { empresaId, estado: 'SIN_PDF' } }),
+      this.prisma.notificacion.findMany({
+        where: { empresaId },
+        select: {
+          id: true,
+          origen: true,
+          moduloSunafil: true,
+          fechaMensaje: true,
+          createdAt: true,
+          montoExigible: true,
+        },
+      }),
+      this.prisma.notificacion.findMany({
+        where: { empresaId },
+        include: {
+          responsable: { select: { id: true, nombres: true, apellidos: true } },
+        },
+        orderBy: [{ fechaMensaje: 'desc' }, { createdAt: 'desc' }],
+        take: 30,
+      }),
+    ]);
+
+    // Conteo por origen
+    let sunatCount = 0;
+    let sunafilCount = 0;
+    const moduloSunafilCount: Record<string, number> = {
+      FISCALIZACION: 0,
+      COBRANZA: 0,
+      ACCIONES_PREVIAS: 0,
+      ALERTAS_FORMALIZACION: 0,
+      ALERTAS_SST: 0,
+    };
+
+    // Histórico últimos 12 meses
+    const mapMeses = new Map<string, number>();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      mapMeses.set(key, 0);
+    }
+
+    for (const n of notificacionesAll) {
+      if (n.origen === 'SUNAFIL') {
+        sunafilCount++;
+        if (n.moduloSunafil && moduloSunafilCount[n.moduloSunafil] !== undefined) {
+          moduloSunafilCount[n.moduloSunafil]++;
+        }
+      } else {
+        sunatCount++;
+      }
+
+      const f = n.fechaMensaje || n.createdAt;
+      const key = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}`;
+      if (mapMeses.has(key)) {
+        mapMeses.set(key, (mapMeses.get(key) || 0) + 1);
+      }
+    }
+
+    const historicoMensual = Array.from(mapMeses.entries()).map(([mes, cantidad]) => ({
+      mes,
+      cantidad,
+    }));
+
+    return {
+      empresa: {
+        id: empresa.id,
+        ruc: empresa.ruc,
+        razonSocial: empresa.razonSocial,
+        estadoConexion: empresa.estadoConexion,
+        estadoSincro: empresa.estadoSincro,
+        ultimaSincronizacion: empresa.ultimaSincronizacion,
+        habilitadoSunat: empresa.habilitadoSunat,
+        habilitadoSunafil: empresa.habilitadoSunafil,
+        terminosSunafil: empresa.terminosSunafil,
+        activo: empresa.activo,
+        createdAt: empresa.createdAt,
+        usuariosAsignados: empresa.asignaciones.map((a) => a.usuario),
+      },
+      metricas: {
+        totalNotificaciones,
+        sinLeer,
+        sinPdf,
+        atendidas: totalNotificaciones - sinLeer,
+        sunatCount,
+        sunafilCount,
+        moduloSunafilCount,
+      },
+      historicoMensual,
+      lineaTiempo,
+    };
+  }
 }

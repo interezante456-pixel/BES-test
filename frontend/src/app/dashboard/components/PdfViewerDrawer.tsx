@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { X, Download, FileText, AlertTriangle, Building, Calendar, CircleDollarSign, Users, Clock } from 'lucide-react';
+import { X, Download, FileText, AlertTriangle, Building, Calendar, CircleDollarSign, Users, Clock, CheckCircle2 } from 'lucide-react';
 import api from '@/lib/api';
 import { getAlertBadgeInfo } from '@/lib/notificacion-badge.helper';
+import { NotifGestionPanel } from './NotifGestionPanel';
 
 interface LecturaHistorial {
   usuarioId: string;
@@ -14,23 +15,20 @@ interface LecturaHistorial {
 interface PdfViewerDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  notificacion: {
-    id: string;
-    asunto: string;
-    fechaMensaje: string;
-    rutaArchivoPdf: string | null;
-    montoExigible?: string | null;
-    expedienteCoactivo?: string | null;
-    empresa?: {
-      ruc: string;
-      razonSocial: string;
-    };
-  } | null;
+  notificacion: any;
+  onNotificacionUpdated?: (updated: any) => void;
 }
 
-export function PdfViewerDrawer({ isOpen, onClose, notificacion }: PdfViewerDrawerProps) {
+export function PdfViewerDrawer({ isOpen, onClose, notificacion, onNotificacionUpdated }: PdfViewerDrawerProps) {
+  const [activeTab, setActiveTab] = useState<'DOCUMENTO' | 'GESTION'>('DOCUMENTO');
+  const [currentNotif, setCurrentNotif] = useState<any>(notificacion);
   const [historial, setHistorial] = useState<LecturaHistorial[]>([]);
   const [loadingHistorial, setLoadingHistorial] = useState(false);
+
+  useEffect(() => {
+    setCurrentNotif(notificacion);
+    setActiveTab('DOCUMENTO');
+  }, [notificacion]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -132,23 +130,68 @@ export function PdfViewerDrawer({ isOpen, onClose, notificacion }: PdfViewerDraw
           </div>
         </div>
 
-        {/* Viewer Body (Iframe) */}
-        <div className="flex-1 bg-[#0a0f1c] relative flex items-center justify-center p-2 min-h-0">
-          {pdfUrl ? (
-            <iframe
-              src={`${pdfUrl}#toolbar=1&navpanes=0`}
-              className="w-full h-full rounded-2xl border border-white/5 bg-white"
-              title="Visor PDF SUNAT"
-            />
-          ) : (
-            <div className="text-center space-y-3 p-8">
-              <div className="w-16 h-16 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/20">
-                <AlertTriangle className="w-8 h-8" />
+        {/* Barra de Pestañas (Documento vs Gestión) */}
+        <div className="flex items-center gap-2 px-6 py-2 border-b border-white/5 bg-[#111827]">
+          <button
+            type="button"
+            onClick={() => setActiveTab('DOCUMENTO')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'DOCUMENTO'
+                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Documento PDF</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('GESTION')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'GESTION'
+                ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Gestión y Bitácora</span>
+            {currentNotif?.estadoGestion && (
+              <span className="text-[10px] bg-orange-500/20 text-orange-300 px-1.5 py-0.5 rounded font-mono">
+                {currentNotif.estadoGestion}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Viewer Body */}
+        <div className="flex-1 bg-[#0a0f1c] relative flex flex-col p-3 min-h-0 overflow-y-auto">
+          {activeTab === 'DOCUMENTO' ? (
+            pdfUrl ? (
+              <iframe
+                src={`${pdfUrl}#toolbar=1&navpanes=0`}
+                className="w-full h-full rounded-2xl border border-white/5 bg-white min-h-[500px]"
+                title="Visor PDF SUNAT"
+              />
+            ) : (
+              <div className="m-auto text-center space-y-3 p-8">
+                <div className="w-16 h-16 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/20">
+                  <AlertTriangle className="w-8 h-8" />
+                </div>
+                <h4 className="text-lg font-bold text-white">Archivo PDF No Disponible</h4>
+                <p className="text-sm text-gray-400 max-w-md mx-auto">
+                  Este documento fue registrado desde el Buzón de SUNAT, pero su archivo PDF no pudo ser descargado directamente desde sus servidores.
+                </p>
               </div>
-              <h4 className="text-lg font-bold text-white">Archivo PDF No Disponible</h4>
-              <p className="text-sm text-gray-400 max-w-md mx-auto">
-                Este documento fue registrado desde el Buzón de SUNAT, pero su archivo PDF no pudo ser descargado directamente desde sus servidores.
-              </p>
+            )
+          ) : (
+            <div className="max-w-2xl mx-auto w-full py-2">
+              <NotifGestionPanel
+                notificacion={currentNotif}
+                onUpdated={(updated) => {
+                  setCurrentNotif(updated);
+                  if (onNotificacionUpdated) onNotificacionUpdated(updated);
+                }}
+              />
             </div>
           )}
         </div>

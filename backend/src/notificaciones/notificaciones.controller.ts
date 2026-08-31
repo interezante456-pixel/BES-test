@@ -12,11 +12,33 @@ import {
 } from '@nestjs/common';
 import { NotificacionesService } from './notificaciones.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UpdateGestionDto, CreateComentarioDto } from './dto/update-gestion.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('notificaciones')
 export class NotificacionesController {
   constructor(private readonly notificacionesService: NotificacionesService) {}
+
+  /** Listar notificaciones asignadas al usuario actual */
+  @Get('mis-asignadas')
+  findMisAsignadas(
+    @Request() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('estadoGestion') estadoGestion?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.notificacionesService.findMisAsignadas(
+      req.user.id,
+      req.user.rol,
+      {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 25,
+        estadoGestion,
+        search,
+      },
+    );
+  }
 
   /** Bandeja de entrada — notificaciones sin leer para este usuario */
   @Get()
@@ -120,6 +142,46 @@ export class NotificacionesController {
   @Patch('mark-all-read')
   markAllAsRead(@Request() req: any) {
     return this.notificacionesService.markAllAsRead(req.user.id, req.user.rol);
+  }
+
+  /** Actualizar estado de gestión, responsable, notas o compromiso */
+  @Patch(':id/gestion')
+  updateGestion(
+    @Param('id') id: string,
+    @Body() dto: UpdateGestionDto,
+    @Request() req: any,
+  ) {
+    return this.notificacionesService.updateGestion(
+      id,
+      req.user.id,
+      req.user.rol,
+      dto,
+    );
+  }
+
+  /** Obtener comentarios e historial de cambios de una notificación */
+  @Get(':id/comentarios')
+  getComentarios(@Param('id') id: string, @Request() req: any) {
+    return this.notificacionesService.getComentarios(
+      id,
+      req.user.id,
+      req.user.rol,
+    );
+  }
+
+  /** Agregar un comentario/nota a la bitácora de una notificación */
+  @Post(':id/comentarios')
+  addComentario(
+    @Param('id') id: string,
+    @Body() dto: CreateComentarioDto,
+    @Request() req: any,
+  ) {
+    return this.notificacionesService.addComentario(
+      id,
+      req.user.id,
+      req.user.rol,
+      dto,
+    );
   }
 
   /** Historial de auditoría: quién y cuándo abrió una notificación */

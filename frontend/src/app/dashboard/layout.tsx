@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import api from '@/lib/api';
-import { Building2, Bell, LogOut, Settings, Shield, ShieldCheck, Archive, Mail, TrendingUp, Menu, X, User } from 'lucide-react';
+import { Building2, Bell, LogOut, Settings, Shield, ShieldCheck, Archive, Mail, TrendingUp, Menu, X, User, Sun, UserCheck, Calendar, FileText } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
 import { UserProfileModal } from './components/UserProfileModal';
 
@@ -137,6 +137,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-4 mb-2">General</p>
             <div className="space-y-1">
               <Link
+                href="/dashboard/morning-brief"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center gap-3.5 px-4 py-2.5 rounded-xl font-semibold text-xs transition-all ${
+                  isActive('/dashboard/morning-brief')
+                    ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-sm shadow-orange-500/5'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Sun className="w-4 h-4 text-amber-400" />
+                Morning Brief
+                <span className="ml-auto text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold">
+                  HOY
+                </span>
+              </Link>
+              <Link
                 href="/dashboard"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center gap-3.5 px-4 py-2.5 rounded-xl font-semibold text-xs transition-all ${
@@ -146,8 +161,81 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 }`}
               >
                 <TrendingUp className="w-4 h-4 text-orange-400" />
-                Panel de Control
+                Panel de Control 360°
               </Link>
+              {/* Módulos en BETA: Visibles exclusivamente para SUPER_ADMIN */}
+              {user?.rol === 'SUPER_ADMIN' && (
+                <>
+                  <Link
+                    href="/dashboard/mis-asignadas"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center justify-between px-4 py-2.5 rounded-xl font-semibold text-xs transition-all ${
+                      isActive('/dashboard/mis-asignadas')
+                        ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-sm shadow-orange-500/5'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <UserCheck className="w-4 h-4 text-indigo-400" />
+                      <span>Mis Asignadas</span>
+                    </div>
+                    <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-bold">
+                      BETA
+                    </span>
+                  </Link>
+                  <Link
+                    href="/dashboard/calendario"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center justify-between px-4 py-2.5 rounded-xl font-semibold text-xs transition-all ${
+                      isActive('/dashboard/calendario')
+                        ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-sm shadow-orange-500/5'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <Calendar className="w-4 h-4 text-amber-400" />
+                      <span>Calendario</span>
+                    </div>
+                    <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-bold">
+                      BETA
+                    </span>
+                  </Link>
+                  <Link
+                    href="/dashboard/recordatorios"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center justify-between px-4 py-2.5 rounded-xl font-semibold text-xs transition-all ${
+                      isActive('/dashboard/recordatorios')
+                        ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-sm shadow-orange-500/5'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <Bell className="w-4 h-4 text-amber-400" />
+                      <span>Recordatorios</span>
+                    </div>
+                    <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-bold">
+                      BETA
+                    </span>
+                  </Link>
+                  <Link
+                    href="/dashboard/reportes"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center justify-between px-4 py-2.5 rounded-xl font-semibold text-xs transition-all ${
+                      isActive('/dashboard/reportes')
+                        ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-sm shadow-orange-500/5'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <FileText className="w-4 h-4 text-orange-400" />
+                      <span>Reportes</span>
+                    </div>
+                    <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-bold">
+                      BETA
+                    </span>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 

@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-import puppeteer, { Page } from 'puppeteer';
+import { Page } from 'puppeteer';
 import { PrismaService } from '../../prisma.service';
 import { EncryptionService } from '../../encryption/encryption.service';
 import { MailService } from '../../mail/mail.service';
 import { TelegramService } from '../../mail/telegram.service';
 import { WhatsappService } from '../../mail/whatsapp.service';
 import { PdfParserService } from '../shared/pdf-parser.service';
+import { BrowserService } from '../shared/browser.service';
 import { isUrgentAsunto } from '../../common/notificacion-classifier';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -23,6 +24,7 @@ export class SunatScraperService {
     private readonly telegramService: TelegramService,
     private readonly whatsappService: WhatsappService,
     private readonly pdfParserService: PdfParserService,
+    private readonly browserService: BrowserService,
   ) {}
 
   cleanUtf8(text: string): string {
@@ -53,45 +55,11 @@ export class SunatScraperService {
 
   /**
    * A2: Lanza una instancia de Puppeteer con la configuración estándar del sistema.
-   * Punto único de verdad para los flags de Chrome — cambiar aquí afecta a todos los flujos.
+   * Delega en BrowserService (shared) para centralizar flags de Chrome y User-Agent.
+   * Usa contexto aislado para garantizar que las cookies de sesión no se mezclen entre empresas.
    */
   private async launchBrowser() {
-    const isHeadless =
-      process.env.PUPPETEER_HEADLESS?.replace(/['\"]/g, '').trim() === 'true';
-    this.logger.log(
-      `Iniciando Puppeteer. PUPPETEER_HEADLESS="${process.env.PUPPETEER_HEADLESS}" → Headless: ${isHeadless}`,
-    );
-    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
-    const browser = await puppeteer.launch({
-      executablePath,
-      headless: isHeadless,
-      defaultViewport: { width: 1920, height: 1080 },
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--start-maximized',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote',
-        '--incognito',
-        '--disable-features=PasswordLeakDetection,AutofillServerCommunication',
-        '--disable-save-password-bubble',
-        '--password-store=basic',
-      ],
-    });
-    const context = await browser.createBrowserContext();
-    const page = await context.newPage();
-    page.setDefaultNavigationTimeout(60000);
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    );
-    await page.setExtraHTTPHeaders({ 'Accept-Language': 'es-ES,es;q=0.9' });
-    page.on('dialog', async (dialog) => {
-      this.logger.log(`Diálogo detectado: [${dialog.type()}] ${dialog.message()}. Aceptando...`);
-      await dialog.accept();
-    });
-    return { browser, page };
+    return this.browserService.launchIsolated();
   }
 
   /**
@@ -166,7 +134,85 @@ export class SunatScraperService {
         { waitUntil: 'networkidle2' },
       );
     }
-    await new Promise((r) => setTimeout(r, 20000));
+    // Espera inteligente: aguarda hasta que aparezca el contenedor del buzón o sus iframes.
+    try {
+      await page.waitForSelector(
+        '#divMensaje, .list-group, iframe[src*="visor"], iframe[src*="master"], iframe[src*="notifica"], iframe[src*="buzon"], #tablaBuzon, [title*="Buzón"]',
+        { timeout: 15000 },
+      );
+    } catch {
+      this.logger.warn('waitForSelector de buzón no encontró selector explícito en 15s — aplicando margen de 3s.');
+    }
+    // Breve margen para que el frame termine de crearse en Puppeteer
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+
+  /**
+   * Busca de forma reactiva e inteligente el marco (Frame) donde SUNAT renderiza el Buzón.
+   * Examina tanto URLs conocidas como elementos distintivos dentro del DOM de cada frame.
+   */
+  private async findBuzonFrame(page: Page): Promise<any | null> {
+    const startTime = Date.now();
+    const maxWaitMs = 15000;
+
+    while (Date.now() - startTime < maxWaitMs) {
+      const frames = page.frames();
+
+      // 1. Buscar coincidencia por URL
+      const frameByUrl = frames.find((f) => {
+        const url = f.url().toLowerCase();
+        return (
+          url.includes('visor') ||
+          url.includes('master') ||
+          url.includes('notifica') ||
+          url.includes('buzon') ||
+          url.includes('mensaje')
+        );
+      });
+      if (frameByUrl) {
+        return frameByUrl;
+      }
+
+      // 2. Buscar inspeccionando el contenido interno de cada frame
+      for (const f of frames) {
+        try {
+          const hasBuzonElements = await f.evaluate(() => {
+            const bodyText = document.body ? document.body.innerText || '' : '';
+            return !!(
+              document.querySelector('#divDetalleMensaje') ||
+              document.querySelector('#tablaBuzon') ||
+              document.querySelector('a[href*="bajarArchivo"]') ||
+              bodyText.includes('Buzón Notificaciones') ||
+              bodyText.includes('Buzón Mensajes') ||
+              /^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}/.test(bodyText)
+            );
+          });
+          if (hasBuzonElements) {
+            return f;
+          }
+        } catch {
+          // Ignorar frames cerrados o inaccesibles temporalmente
+        }
+      }
+
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+
+    // 3. Fallback: verificar si el frame principal de la página ya contiene el buzón
+    try {
+      const mainHasBuzon = await page.evaluate(() => {
+        const bodyText = document.body ? document.body.innerText || '' : '';
+        return !!(
+          document.querySelector('#divDetalleMensaje') ||
+          document.querySelector('#tablaBuzon') ||
+          bodyText.includes('Buzón Notificaciones') ||
+          bodyText.includes('Buzón Mensajes')
+        );
+      });
+      if (mainHasBuzon) return page.mainFrame();
+    } catch {}
+
+    return null;
   }
 
   private async handleSunatPopups(page: Page) {
@@ -339,16 +385,18 @@ export class SunatScraperService {
       );
 
       try {
-        const framesList = page.frames();
-        const mainFrame = framesList.find(
-          (f) => f.url().includes('visor') || f.url().includes('master'),
-        );
+        const mainFrame = await this.findBuzonFrame(page);
 
-        if (mainFrame) {
-          this.logger.log(`Frame de buzón detectado: ${mainFrame.url()}`);
-          await mainFrame.evaluate(() => {
-            window.print = () => {};
-          });
+        if (!mainFrame) {
+          throw new Error(
+            `No se pudo detectar el marco (iframe) del Buzón Electrónico de SUNAT tras esperar 15s. Posible bloqueo o cambio de interfaz en SUNAT.`,
+          );
+        }
+
+        this.logger.log(`Frame de buzón detectado: ${mainFrame.url()}`);
+        await mainFrame.evaluate(() => {
+          window.print = () => {};
+        });
 
           // Evaluación masiva dentro del navegador para evitar saturación IPC
 
@@ -587,7 +635,7 @@ export class SunatScraperService {
                     const sunatUrl = `https://ww1.sunat.gob.pe/ol-ti-itvisornoti/visor/bajarArchivo/${docInfo.internalId}/0/0/${empresa.ruc}`;
 
                     // Fetch silencioso
-                    const base64Data = await mainFrame.evaluate(async (url) => {
+                    const base64Data = await mainFrame.evaluate(async (url: string) => {
                       try {
                         const response = await fetch(url);
                         if (!response.ok) return null;
@@ -651,7 +699,7 @@ export class SunatScraperService {
 
                     // Buscar un ID diferente a currentId (que es la constancia) y diferente al RUC
                     const alternativeId = allIds.find(
-                      (id) => id !== currentId && id !== empresa.ruc,
+                      (id: string) => id !== currentId && id !== empresa.ruc,
                     );
 
                     if (alternativeId) {
@@ -662,7 +710,7 @@ export class SunatScraperService {
 
                       const sunatUrl = `https://ww1.sunat.gob.pe/ol-ti-itvisornoti/visor/bajarArchivo/${alternativeId}/0/0/${empresa.ruc}`;
 
-                      const base64Data = await mainFrame.evaluate(async (url) => {
+                      const base64Data = await mainFrame.evaluate(async (url: string) => {
                         try {
                           const response = await fetch(url);
                           if (!response.ok) return null;
@@ -776,11 +824,11 @@ export class SunatScraperService {
             // Early exit: si se detectó duplicado, salir del loop principal
             if (primerDuplicadoEncontrado) break;
           }
+          notificacionesExtraidas = notificacionesNuevas;
+        } catch (domError) {
+          this.logger.error('Fallo crítico en lectura de buzón:', domError);
+          throw domError;
         }
-        notificacionesExtraidas = notificacionesNuevas;
-      } catch (domError) {
-        this.logger.error('Fallo crítico:', domError);
-      }
 
       // IDEMPOTENCIA: Solo insertar las nuevas (no existentes en BD)
       // skipDuplicates: true maneja silenciosamente duplicados del mismo ciclo (mismo fileId procesado dos veces)
@@ -801,23 +849,34 @@ export class SunatScraperService {
       for (const notif of notificacionesExtraidas) {
         if (isUrgentAsunto(notif.asunto)) {
           // Dispatch multicanal: Email + Telegram + WhatsApp
-          let emailSent = false;
-          for (let attempt = 1; attempt <= 3; attempt++) {
-            try {
-              await this.mailService.sendUrgentAlert(
-                empresa.usuario.email,
-                empresa.razonSocial,
-                notif.asunto,
-              );
-              emailSent = true;
-              break;
-            } catch (mailErr) {
-              this.logger.warn(
-                `⚠️ Intento ${attempt}/3 de email falló: ${mailErr.message}. ${attempt < 3 ? `Reintentando en ${attempt * 3}s...` : 'Abandonando.'}`,
-              );
-              if (attempt < 3)
-                await new Promise((r) => setTimeout(r, attempt * 3000));
+          // Guarda: si la empresa no tiene usuario asignado, se omite el email y se registra advertencia.
+          if (!empresa.usuario?.email) {
+            this.logger.warn(
+              `⚠️ Empresa ${empresa.ruc} (${empresa.razonSocial}) no tiene usuario asignado — notificaciones por email omitidas para esta alerta.`,
+            );
+          } else {
+            let emailSent = false;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              try {
+                await this.mailService.sendUrgentAlert(
+                  empresa.usuario.email,
+                  empresa.razonSocial,
+                  notif.asunto,
+                );
+                emailSent = true;
+                break;
+              } catch (mailErr) {
+                this.logger.warn(
+                  `⚠️ Intento ${attempt}/3 de email falló: ${mailErr.message}. ${attempt < 3 ? `Reintentando en ${attempt * 3}s...` : 'Abandonando.'}`,
+                );
+                if (attempt < 3)
+                  await new Promise((r) => setTimeout(r, attempt * 3000));
+              }
             }
+            if (!emailSent)
+              this.logger.error(
+                `❌ No se pudo enviar email de alerta para: ${notif.asunto}`,
+              );
           }
 
           // Alerta Telegram (enviada a todos los usuarios asignados a la empresa)
@@ -828,11 +887,6 @@ export class SunatScraperService {
           if (waPhone) {
             await this.whatsappService.sendAlert(waPhone, empresa.razonSocial, notif.asunto);
           }
-
-          if (!emailSent)
-            this.logger.error(
-              `❌ No se pudo enviar email de alerta para: ${notif.asunto}`,
-            );
         }
       }
 
@@ -862,6 +916,8 @@ export class SunatScraperService {
       this.logger.error(`Error Scraping:`, error);
       throw error;
     } finally {
+      // Margen de gracia (5s) para que SUNAT complete writes de sesión pendientes
+      // antes de que el browser cierre abruptamente y cancele requests en background.
       await new Promise((r) => setTimeout(r, 5000));
       if (browser) await browser.close();
     }
@@ -935,56 +991,61 @@ export class SunatScraperService {
       await page.setRequestInterception(true);
       page.on('request', requestListener);
 
-      const blueLinkClicked = await visorFrame.evaluate(
-        (kw: string, fid: string) => {
-          const allLinks = Array.from(document.querySelectorAll('a'));
+      let blueLinkClicked: string;
+      try {
+        blueLinkClicked = await visorFrame.evaluate(
+          (kw: string, fid: string) => {
+            const allLinks = Array.from(document.querySelectorAll('a'));
 
-          if (kw) {
-            const exactLink = allLinks.find((a) =>
-              (a.textContent || '').includes(kw),
-            );
-            if (exactLink) {
-              exactLink.click();
-              return `exact: ${exactLink.textContent?.substring(0, 50)}`;
+            if (kw) {
+              const exactLink = allLinks.find((a) =>
+                (a.textContent || '').includes(kw),
+              );
+              if (exactLink) {
+                exactLink.click();
+                return `exact: ${exactLink.textContent?.substring(0, 50)}`;
+              }
             }
-          }
 
-          if (fid) {
-            const fidLink = allLinks.find((a) => a.outerHTML.includes(fid));
-            if (fidLink) {
-              fidLink.click();
-              return `fid: ${fidLink.textContent?.substring(0, 50)}`;
+            if (fid) {
+              const fidLink = allLinks.find((a) => a.outerHTML.includes(fid));
+              if (fidLink) {
+                fidLink.click();
+                return `fid: ${fidLink.textContent?.substring(0, 50)}`;
+              }
             }
-          }
 
-          const conclusionLink = allLinks.find((a) => {
-            const text = (a.textContent || '').trim();
-            const isSidebar = a.closest(
-              'nav, #sidebar, .sidebar, #menu, ul.nav',
-            );
-            return (
-              text.includes('Conclusi') &&
-              !text.toLowerCase().includes('ejecuci') &&
-              !isSidebar &&
-              text.length < 100
-            );
-          });
-          if (conclusionLink) {
-            conclusionLink.click();
-            return `conclusion: ${conclusionLink.textContent?.substring(0, 50)}`;
-          }
+            const conclusionLink = allLinks.find((a) => {
+              const text = (a.textContent || '').trim();
+              const isSidebar = a.closest(
+                'nav, #sidebar, .sidebar, #menu, ul.nav',
+              );
+              return (
+                text.includes('Conclusi') &&
+                !text.toLowerCase().includes('ejecuci') &&
+                !isSidebar &&
+                text.length < 100
+              );
+            });
+            if (conclusionLink) {
+              conclusionLink.click();
+              return `conclusion: ${conclusionLink.textContent?.substring(0, 50)}`;
+            }
 
-          return 'not-found';
-        },
-        numResolucion,
-        currentId,
-      );
+            return 'not-found';
+          },
+          numResolucion,
+          currentId,
+        );
 
-      this.logger.log(`🔗 Click en link azul (en caliente): ${blueLinkClicked}`);
-      await new Promise((r) => setTimeout(r, 4000));
-
-      page.off('request', requestListener);
-      await page.setRequestInterception(false);
+        this.logger.log(`🔗 Click en link azul (en caliente): ${blueLinkClicked}`);
+        await new Promise((r) => setTimeout(r, 4000));
+      } finally {
+        // Garantiza que el listener y la intercepción siempre se limpian,
+        // incluso si ocurre una excepción durante el click o la evaluación.
+        page.off('request', requestListener);
+        await page.setRequestInterception(false).catch(() => {});
+      }
 
       if (capturedPdfUrl) {
         const pdfUrlStr = capturedPdfUrl as string;
@@ -1326,37 +1387,41 @@ if (fs.existsSync(filePath)) {
       await page.setRequestInterception(true);
       page.on('request', requestListener);
 
-      // Hacer click en el link azul (panel de detalle, evitando nav/sidebar)
-      const blueLinkClicked = await visorFrame.evaluate((kw: string, fid: string) => {
-        const allLinks = Array.from(document.querySelectorAll('a'));
+      let blueLinkClicked: string;
+      try {
+        // Hacer click en el link azul (panel de detalle, evitando nav/sidebar)
+        blueLinkClicked = await visorFrame.evaluate((kw: string, fid: string) => {
+          const allLinks = Array.from(document.querySelectorAll('a'));
 
-        // 1. Link con número exacto de resolución
-        const exactLink = allLinks.find((a) => (a.textContent || '').includes(kw));
-        if (exactLink) { exactLink.click(); return `exact: ${exactLink.textContent?.substring(0, 50)}`; }
+          // 1. Link con número exacto de resolución
+          const exactLink = allLinks.find((a) => (a.textContent || '').includes(kw));
+          if (exactLink) { exactLink.click(); return `exact: ${exactLink.textContent?.substring(0, 50)}`; }
 
-        // 2. Link con fileId / constanciaId
-        if (fid) {
-          const fidLink = allLinks.find((a) => a.outerHTML.includes(fid));
-          if (fidLink) { fidLink.click(); return `fid: ${fidLink.textContent?.substring(0, 50)}`; }
-        }
+          // 2. Link con fileId / constanciaId
+          if (fid) {
+            const fidLink = allLinks.find((a) => a.outerHTML.includes(fid));
+            if (fidLink) { fidLink.click(); return `fid: ${fidLink.textContent?.substring(0, 50)}`; }
+          }
 
-        // 3. Link de Conclusión (excluyendo menú lateral)
-        const conclusionLink = allLinks.find((a) => {
-          const text = (a.textContent || '').trim();
-          const isSidebar = a.closest('nav, #sidebar, .sidebar, #menu, ul.nav');
-          return text.includes('Conclusi') && !text.toLowerCase().includes('ejecuci') && !isSidebar && text.length < 100;
-        });
-        if (conclusionLink) { conclusionLink.click(); return `conclusion: ${conclusionLink.textContent?.substring(0, 50)}`; }
+          // 3. Link de Conclusión (excluyendo menú lateral)
+          const conclusionLink = allLinks.find((a) => {
+            const text = (a.textContent || '').trim();
+            const isSidebar = a.closest('nav, #sidebar, .sidebar, #menu, ul.nav');
+            return text.includes('Conclusi') && !text.toLowerCase().includes('ejecuci') && !isSidebar && text.length < 100;
+          });
+          if (conclusionLink) { conclusionLink.click(); return `conclusion: ${conclusionLink.textContent?.substring(0, 50)}`; }
 
-        return 'not-found';
-      }, asuntoKeyword, constanciaId);
+          return 'not-found';
+        }, asuntoKeyword, constanciaId);
 
-      this.logger.log(`🔗 Click en link azul: ${blueLinkClicked}`);
-      await new Promise((r) => setTimeout(r, 5000));
-
-      page.off('request', requestListener);
-      await page.setRequestInterception(false);
-
+        this.logger.log(`🔗 Click en link azul: ${blueLinkClicked}`);
+        await new Promise((r) => setTimeout(r, 5000));
+      } finally {
+        // Garantiza que el listener y la intercepción siempre se limpian,
+        // incluso si ocurre una excepción durante el click o la evaluación.
+        page.off('request', requestListener);
+        await page.setRequestInterception(false).catch(() => {});
+      }
       this.logger.log(`🔗 URL capturada: ${capturedPdfUrl ?? 'ninguna'}`);
 
       // ── PASO 3: Resolver la URL final del PDF ──

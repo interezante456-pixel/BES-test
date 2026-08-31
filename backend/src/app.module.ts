@@ -14,6 +14,9 @@ import { MailModule } from './mail/mail.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { AsignacionesModule } from './asignaciones/asignaciones.module';
 import { EstadisticasModule } from './estadisticas/estadisticas.module';
+import { RecordatoriosModule } from './recordatorios/recordatorios.module';
+import { EtiquetasModule } from './etiquetas/etiquetas.module';
+import { ReportesModule } from './reportes/reportes.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { AuditModule } from './audit/audit.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -76,6 +79,9 @@ import * as Joi from 'joi';
     UsuariosModule,
     AsignacionesModule,
     EstadisticasModule,
+    RecordatoriosModule,
+    EtiquetasModule,
+    ReportesModule,
   ],
   controllers: [AppController],
   providers: [

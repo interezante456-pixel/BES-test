@@ -13,6 +13,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma.service';
+import { EncryptionService } from '../encryption/encryption.service';
 import { SunatScraperService } from './sunat/sunat-scraper.service';
 import { CronService, ScheduleConfigDto } from './cron.service';
 import { SunafilScraperService } from './sunafil/sunafil-scraper.service';
@@ -23,6 +24,7 @@ export class ScraperController {
   constructor(
     @InjectQueue('sunat-scraper-queue') private scraperQueue: Queue,
     private prisma: PrismaService,
+    private encryptionService: EncryptionService,
     private sunatScraperService: SunatScraperService,
     private cronService: CronService,
     private sunafilScraperService: SunafilScraperService,
@@ -222,6 +224,61 @@ export class ScraperController {
     return this.sunafilScraperService.sincronizarEmpresa(empresaId, {
       descargarPdfs: false,
     });
+  }
+
+  /**
+   * LOGIN ASISTIDO / AUTO-ACCESO AL PORTAL SUNAT O SUNAFIL:
+   * Proporciona la URL directa y credenciales seguras desencriptadas
+   * para apertura asistida en un solo clic.
+   */
+  @Post('open-portal/:empresaId')
+  async openPortal(
+    @Param('empresaId') empresaId: string,
+    @Body() body: { portal?: 'SUNAT' | 'SUNAFIL' },
+    @Request() req: any,
+  ) {
+    const { id: callerId, rol } = req.user;
+    let empresa: any = null;
+
+    if (rol === 'SUPER_ADMIN' || rol === 'ADMIN') {
+      empresa = await this.prisma.empresa.findUnique({ where: { id: empresaId } });
+    } else {
+      const asignacion = await this.prisma.empresaAsignacion.findFirst({
+        where: { usuarioId: callerId, empresaId },
+        include: { empresa: true },
+      });
+      if (asignacion) empresa = asignacion.empresa;
+    }
+
+    if (!empresa) {
+      throw new ForbiddenException('No tienes acceso a esta empresa.');
+    }
+
+    const portal = body.portal || 'SUNAT';
+    const claveDesencriptada = this.encryptionService.decrypt(empresa.claveSol);
+
+    if (portal === 'SUNAFIL') {
+      const url =
+        'https://api-seguridad.sunat.gob.pe/v1/clientessol/b6474e23-8a3b-4153-b301-dafcc9646250/oauth2/login?originalUrl=https://casillaelectronica.sunafil.gob.pe/si.inbox/Login/Empresa&state=s';
+      return {
+        portal: 'SUNAFIL',
+        url,
+        ruc: empresa.ruc,
+        usuarioSol: empresa.usuarioSol,
+        claveSol: claveDesencriptada,
+      };
+    }
+
+    // Default SUNAT Buzón Electrónico
+    const url =
+      'https://api-seguridad.sunat.gob.pe/v1/clientessol/4f391e15-d7c4-406a-84b2-4d2c8fb6c1f1/oauth2/login?originalUrl=https://e-menu.sunat.gob.pe/cl-ti-itmenu/AutenticaMenuInternet.htm&state=r';
+    return {
+      portal: 'SUNAT',
+      url,
+      ruc: empresa.ruc,
+      usuarioSol: empresa.usuarioSol,
+      claveSol: claveDesencriptada,
+    };
   }
 }
 

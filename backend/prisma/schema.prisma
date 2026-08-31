@@ -34,10 +34,14 @@ model Usuario {
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
   
-  empresas               Empresa[]
-  asignaciones           EmpresaAsignacion[]
-  lecturasNotificaciones NotificacionLectura[]
-  auditLogs              AuditLog[]
+  empresas                  Empresa[]
+  asignaciones              EmpresaAsignacion[]
+  lecturasNotificaciones    NotificacionLectura[]
+  notificacionesGestionadas Notificacion[]          @relation("NotifResponsable")
+  comentariosNotificaciones NotificacionComentario[]
+  eventosCalendario         EventoCalendario[]
+  recordatorios             Recordatorio[]
+  auditLogs                 AuditLog[]
 }
 
 enum EstadoConexion {
@@ -65,8 +69,10 @@ model Empresa {
   usuarioId      String
   usuario        Usuario        @relation(fields: [usuarioId], references: [id])
   
-  notificaciones Notificacion[]
-  asignaciones   EmpresaAsignacion[]
+  notificaciones    Notificacion[]
+  asignaciones      EmpresaAsignacion[]
+  eventosCalendario EventoCalendario[]
+  recordatorios     Recordatorio[]
 }
 
 model Notificacion {
@@ -99,16 +105,44 @@ model Notificacion {
   leidoEn            DateTime?            // Timestamp de la primera lectura
   leidoPorId         String?              // ID del primer usuario que la abrió
   leidoPorNombre     String?              // Nombre para mostrar sin JOIN
-  
+
+  // Gestión y Flujo de Trabajo
+  estadoGestion      String?              // 'EN_REVISION' | 'REQUIERE_ACCION' | 'RESPONDIDO' | 'ARCHIVADO'
+  responsableId      String?              // FK -> Usuario
+  responsableNombre  String?              // Nombre desnormalizado para listados rápidos
+  notasInternas      String?              // Notas internas libres
+  fechaCompromiso    DateTime?            // Fecha límite de respuesta/atención acordada
+
   empresa            Empresa               @relation(fields: [empresaId], references: [id])
+  responsable        Usuario?              @relation("NotifResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
   lecturas           NotificacionLectura[] // Bitácora de auditoría: todos los que la abrieron
+  comentarios        NotificacionComentario[]
+  etiquetas          NotificacionEtiqueta[]
 
   // B4: Índices compuestos para acelerar queries frecuentes del dashboard y bandeja
   @@index([empresaId, fechaMensaje])
   @@index([empresaId, estado])
   @@index([empresaId, leidoGlobal])
   @@index([origen, moduloSunafil])
+  @@index([responsableId])
+  @@index([estadoGestion])
   @@index([createdAt])
+}
+
+model NotificacionComentario {
+  id             String       @id @default(uuid())
+  notificacionId String
+  usuarioId      String
+  usuarioNombre  String?
+  texto          String
+  estadoAnterior String?
+  estadoNuevo    String?
+  createdAt      DateTime     @default(now())
+
+  notificacion   Notificacion @relation(fields: [notificacionId], references: [id], onDelete: Cascade)
+  usuario        Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([notificacionId, createdAt])
 }
 
 
@@ -157,5 +191,61 @@ model ConfiguracionSistema {
   diasSemana             Int[]    @default([0, 1, 2, 3, 4, 5, 6]) // 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb
   horas                  String[] @default(["06:00", "18:00"])    // Horas en formato HH:mm (24h)
   updatedAt              DateTime @updatedAt
+}
+
+model EventoCalendario {
+  id          String   @id @default(uuid())
+  empresaId   String?
+  usuarioId   String
+  titulo      String
+  descripcion String?
+  fecha       DateTime
+  tipo        String   @default("MANUAL") // 'MANUAL' | 'SUNAT_VENCIMIENTO' | 'SUNAFIL_VENCIMIENTO' | 'COMPROMISO'
+  createdAt   DateTime @default(now())
+
+  empresa     Empresa? @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId, fecha])
+  @@index([usuarioId, fecha])
+}
+
+model Recordatorio {
+  id             String    @id @default(uuid())
+  usuarioId      String
+  empresaId      String?
+  notificacionId String?
+  titulo         String
+  descripcion    String?
+  fechaRecordar  DateTime
+  completado     Boolean   @default(false)
+  notificado     Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+
+  usuario        Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa        Empresa?  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, fechaRecordar])
+  @@index([completado, fechaRecordar])
+}
+
+model Etiqueta {
+  id        String   @id @default(uuid())
+  nombre    String   @unique
+  color     String   @default("#f97316") // Color hex
+  createdAt DateTime @default(now())
+
+  notificaciones NotificacionEtiqueta[]
+}
+
+model NotificacionEtiqueta {
+  notificacionId String
+  etiquetaId     String
+  asignadoEn     DateTime @default(now())
+
+  notificacion   Notificacion @relation(fields: [notificacionId], references: [id], onDelete: Cascade)
+  etiqueta       Etiqueta     @relation(fields: [etiquetaId], references: [id], onDelete: Cascade)
+
+  @@id([notificacionId, etiquetaId])
 }
 

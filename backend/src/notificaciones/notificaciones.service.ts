@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma.service';
 import { PdfParserService } from '../scraper/shared/pdf-parser.service';
 import { EmpresaAccessService } from '../common/empresa-access.service';
 import { EventsGateway } from '../events/events.gateway';
+import { UpdateGestionDto, CreateComentarioDto } from './dto/update-gestion.dto';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -468,6 +469,216 @@ export class NotificacionesService implements OnModuleInit {
       formalizacion,
       sst,
       porVencer,
+    };
+  }
+
+  /** GESTIÓN: Actualiza el estado de flujo de trabajo, responsable, notas y fecha de compromiso */
+  async updateGestion(
+    notifId: string,
+    usuarioId: string,
+    rol: string,
+    dto: UpdateGestionDto,
+  ) {
+    const notif = await this.prisma.notificacion.findUnique({
+      where: { id: notifId },
+      include: { empresa: true },
+    });
+
+    if (!notif) {
+      throw new NotFoundException('Notificación no encontrada.');
+    }
+
+    const empresaIds = await this.getEmpresaIds(usuarioId, rol);
+    if (!empresaIds.includes(notif.empresaId)) {
+      throw new ForbiddenException('No tienes acceso a esta notificación.');
+    }
+
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: { nombres: true, apellidos: true },
+    });
+    const usuarioNombre = usuario ? `${usuario.nombres} ${usuario.apellidos}`.trim() : 'Usuario';
+
+    let nuevoResponsableNombre = notif.responsableNombre;
+    if (dto.responsableId !== undefined) {
+      if (dto.responsableId === null || dto.responsableId === '') {
+        nuevoResponsableNombre = null;
+      } else {
+        const respUser = await this.prisma.usuario.findUnique({
+          where: { id: dto.responsableId },
+          select: { nombres: true, apellidos: true },
+        });
+        if (respUser) {
+          nuevoResponsableNombre = `${respUser.nombres} ${respUser.apellidos}`.trim();
+        }
+      }
+    }
+
+    const updateData: any = {};
+    if (dto.estadoGestion !== undefined) updateData.estadoGestion = dto.estadoGestion;
+    if (dto.responsableId !== undefined) {
+      updateData.responsableId = dto.responsableId || null;
+      updateData.responsableNombre = nuevoResponsableNombre;
+    }
+    if (dto.notasInternas !== undefined) updateData.notasInternas = dto.notasInternas;
+    if (dto.fechaCompromiso !== undefined) {
+      updateData.fechaCompromiso = dto.fechaCompromiso ? new Date(dto.fechaCompromiso) : null;
+    }
+
+    const estadoCambio = dto.estadoGestion && dto.estadoGestion !== notif.estadoGestion;
+    const comentarioTexto = dto.comentario || (estadoCambio ? `Estado actualizado a ${dto.estadoGestion}` : null);
+
+    const [updatedNotif] = await this.prisma.$transaction([
+      this.prisma.notificacion.update({
+        where: { id: notifId },
+        data: updateData,
+        include: {
+          empresa: { select: { id: true, razonSocial: true, ruc: true } },
+          responsable: { select: { id: true, nombres: true, apellidos: true, email: true } },
+        },
+      }),
+      ...(comentarioTexto
+        ? [
+            this.prisma.notificacionComentario.create({
+              data: {
+                notificacionId: notifId,
+                usuarioId,
+                usuarioNombre,
+                texto: comentarioTexto,
+                estadoAnterior: notif.estadoGestion,
+                estadoNuevo: dto.estadoGestion || notif.estadoGestion,
+              },
+            }),
+          ]
+        : []),
+    ]);
+
+    return updatedNotif;
+  }
+
+  /** GESTIÓN: Obtener comentarios e historial de una notificación */
+  async getComentarios(notifId: string, usuarioId: string, rol: string) {
+    const notif = await this.prisma.notificacion.findUnique({
+      where: { id: notifId },
+      select: { empresaId: true },
+    });
+
+    if (!notif) {
+      throw new NotFoundException('Notificación no encontrada.');
+    }
+
+    const empresaIds = await this.getEmpresaIds(usuarioId, rol);
+    if (!empresaIds.includes(notif.empresaId)) {
+      throw new ForbiddenException('No tienes acceso a esta notificación.');
+    }
+
+    return this.prisma.notificacionComentario.findMany({
+      where: { notificacionId: notifId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        usuario: { select: { id: true, nombres: true, apellidos: true, rol: true } },
+      },
+    });
+  }
+
+  /** GESTIÓN: Agregar un comentario o nota al historial */
+  async addComentario(
+    notifId: string,
+    usuarioId: string,
+    rol: string,
+    dto: CreateComentarioDto,
+  ) {
+    const notif = await this.prisma.notificacion.findUnique({
+      where: { id: notifId },
+      select: { empresaId: true, estadoGestion: true },
+    });
+
+    if (!notif) {
+      throw new NotFoundException('Notificación no encontrada.');
+    }
+
+    const empresaIds = await this.getEmpresaIds(usuarioId, rol);
+    if (!empresaIds.includes(notif.empresaId)) {
+      throw new ForbiddenException('No tienes acceso a esta notificación.');
+    }
+
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: { nombres: true, apellidos: true },
+    });
+    const usuarioNombre = usuario ? `${usuario.nombres} ${usuario.apellidos}`.trim() : 'Usuario';
+
+    return this.prisma.notificacionComentario.create({
+      data: {
+        notificacionId: notifId,
+        usuarioId,
+        usuarioNombre,
+        texto: dto.texto,
+        estadoAnterior: notif.estadoGestion,
+        estadoNuevo: notif.estadoGestion,
+      },
+      include: {
+        usuario: { select: { id: true, nombres: true, apellidos: true, rol: true } },
+      },
+    });
+  }
+
+  /** GESTIÓN: Listar notificaciones asignadas al usuario actual */
+  async findMisAsignadas(
+    usuarioId: string,
+    rol: string,
+    options: {
+      page?: number;
+      limit?: number;
+      estadoGestion?: string;
+      search?: string;
+    } = {},
+  ) {
+    const page = options.page || 1;
+    const limit = options.limit || 25;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      responsableId: usuarioId,
+    };
+
+    if (options.estadoGestion && options.estadoGestion !== 'ALL') {
+      where.estadoGestion = options.estadoGestion;
+    }
+
+    if (options.search) {
+      const q = options.search.trim();
+      where.OR = [
+        { asunto: { contains: q, mode: 'insensitive' } },
+        { codigoReferencia: { contains: q, mode: 'insensitive' } },
+        { empresa: { razonSocial: { contains: q, mode: 'insensitive' } } },
+        { empresa: { ruc: { contains: q } } },
+      ];
+    }
+
+    const [total, data] = await Promise.all([
+      this.prisma.notificacion.count({ where }),
+      this.prisma.notificacion.findMany({
+        where,
+        include: {
+          empresa: { select: { id: true, razonSocial: true, ruc: true } },
+        },
+        orderBy: [
+          { fechaCompromiso: 'asc' },
+          { fechaMensaje: 'desc' },
+        ],
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit) || 1,
+      },
     };
   }
 }

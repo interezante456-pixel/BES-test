@@ -5,6 +5,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { CronService } from './cron.service';
 import { EncryptionModule } from '../encryption/encryption.module';
 import { PdfParserService } from './shared/pdf-parser.service';
+import { BrowserService } from './shared/browser.service';
 import { ScraperController } from './scraper.controller';
 import { QueueController } from './queue.controller';
 import { SunafilScraperService } from './sunafil/sunafil-scraper.service';
@@ -33,6 +34,7 @@ import { SunafilDownloaderService } from './sunafil/sunafil-downloader.service';
   ],
   controllers: [ScraperController, QueueController],
   providers: [
+    BrowserService,
     SunatScraperService,
     SunatScraperProcessor,
     CronService,
@@ -42,6 +44,7 @@ import { SunafilDownloaderService } from './sunafil/sunafil-downloader.service';
     SunafilDownloaderService,
   ],
   exports: [
+    BrowserService,
     SunatScraperService,
     PdfParserService,
     SunafilScraperService,

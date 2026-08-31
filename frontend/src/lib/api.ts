@@ -2,20 +2,22 @@ import axios from 'axios';
 
 const getBaseURL = () => {
   if (typeof window !== 'undefined') {
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      return process.env.NEXT_PUBLIC_API_URL;
-    }
-    // Si se accede a través de Nginx en Docker (puerto 8080 o producción), usar ruta relativa
-    if (window.location.port === '8080' || window.location.port === '80') {
-      return '';
-    }
-    // En desarrollo local (puerto 3000, 3001, 3500, etc.), dirigir al backend en puerto 4000
+    // Si se navega en local (localhost o 127.0.0.1)
     if (
       window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1' ||
-      window.location.port === '3500'
+      window.location.hostname === '127.0.0.1'
     ) {
+      // Si se accede a través del reverse proxy Nginx (puerto 8080 o 80), usar rutas relativas
+      if (window.location.port === '8080' || window.location.port === '80') {
+        return '';
+      }
+      // Si se accede directo al frontend (puerto 3500, 3000, etc.), llamar al backend en puerto 4000
       return `${window.location.protocol}//${window.location.hostname}:4000`;
+    }
+
+    // En producción (ej: panel.oracon.com)
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      return process.env.NEXT_PUBLIC_API_URL;
     }
     return '';
   }

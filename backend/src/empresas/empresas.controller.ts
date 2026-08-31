@@ -50,6 +50,11 @@ export class EmpresasController {
     return this.empresasService.findOne(id, req.user.id);
   }
 
+  @Get(':id/perfil')
+  getPerfil(@Param('id') id: string, @Request() req: any) {
+    return this.empresasService.getPerfil(id, req.user.id, req.user.rol);
+  }
+
   @Patch(':id')
   async update(
     @Param('id') id: string,

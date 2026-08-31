@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import puppeteer, { Page, Browser } from 'puppeteer';
+import { Page, Browser } from 'puppeteer';
 import { PrismaService } from '../../prisma.service';
 import { EncryptionService } from '../../encryption/encryption.service';
 import {
@@ -13,6 +13,7 @@ import { CobranzaExtractor } from './extractors/cobranza.extractor';
 import { AccionesPreviasExtractor } from './extractors/acciones-previas.extractor';
 import { FormalizacionExtractor } from './extractors/formalizacion.extractor';
 import { SstExtractor } from './extractors/sst.extractor';
+import { BrowserService } from '../shared/browser.service';
 import {
   BaseSunafilRecord,
   SyncSunafilOptions,
@@ -35,38 +36,17 @@ export class SunafilScraperService {
     private readonly encryptionService: EncryptionService,
     private readonly authService: SunafilAuthService,
     private readonly downloaderService: SunafilDownloaderService,
+    private readonly browserService: BrowserService,
   ) {}
 
   /**
-   * Inicializa el navegador Puppeteer con configuración óptima
+   * Inicializa el navegador Puppeteer con configuración óptima.
+   * Delega en BrowserService (shared) para centralizar flags de Chrome y User-Agent.
+   * Usa launchSimple (contexto por defecto) ya que el aislamiento de sesión
+   * es gestionado por SunafilAuthService antes de cada sincronización.
    */
   private async launchBrowser(): Promise<{ browser: Browser; page: Page }> {
-    const isHeadless =
-      process.env.PUPPETEER_HEADLESS?.replace(/['\"]/g, '').trim() === 'true';
-    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
-
-    const browser = await puppeteer.launch({
-      executablePath,
-      headless: isHeadless,
-      defaultViewport: { width: 1920, height: 1080 },
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--start-maximized',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-first-run',
-        '--incognito',
-      ],
-    });
-
-    const page = await browser.newPage();
-    page.setDefaultNavigationTimeout(60000);
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    );
-
-    return { browser, page };
+    return this.browserService.launchSimple();
   }
 
   /**
