@@ -7,6 +7,8 @@ import api from '@/lib/api';
 
 interface Stats {
   totalEmpresas: number;
+  empresasSunat?: number;
+  empresasSunafil?: number;
   totalNotificaciones: number;
   sinLeer: number;
   sinPdf: number;
@@ -114,7 +116,7 @@ export default function DashboardPage() {
           value={stats?.totalEmpresas ?? 0}
           icon={<Building2 className="w-6 h-6" />}
           color="indigo"
-          subtitle="11 en SUNAT • 11 en SUNAFIL"
+          subtitle={`${stats?.empresasSunat ?? 0} en SUNAT • ${stats?.empresasSunafil ?? 0} en SUNAFIL`}
           onClick={() => router.push(activeTab === 'SUNAFIL' ? '/dashboard/sunafil/empresas' : '/dashboard/sunat/empresas')}
           clickable
         />

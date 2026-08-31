@@ -38,9 +38,11 @@ export class EstadisticasService {
       };
     }
 
-    const [totalEmpresas, notificacionesAll, sinPdf, rankingRaw] =
+    const [totalEmpresas, empresasSunat, empresasSunafil, notificacionesAll, sinPdf, rankingRaw] =
       await Promise.all([
         this.prisma.empresa.count({ where: { id: { in: empresaIds } } }),
+        this.prisma.empresa.count({ where: { id: { in: empresaIds }, habilitadoSunat: true } }),
+        this.prisma.empresa.count({ where: { id: { in: empresaIds }, habilitadoSunafil: true } }),
         this.prisma.notificacion.findMany({
           where: { empresaId: { in: empresaIds } },
           select: { id: true, asunto: true, createdAt: true, fechaMensaje: true },
@@ -63,6 +65,7 @@ export class EstadisticasService {
           },
         }),
       ]);
+
 
     const totalNotificaciones = notificacionesAll.length;
     let totalPeligrosas = 0;
@@ -162,6 +165,8 @@ export class EstadisticasService {
 
     return {
       totalEmpresas,
+      empresasSunat,
+      empresasSunafil,
       totalNotificaciones,
       sinLeer,
       sinPdf,
