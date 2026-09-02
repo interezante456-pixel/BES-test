@@ -44,9 +44,13 @@ export class EncryptionService {
       decrypted += decipher.final('utf8');
       return decrypted;
     } catch (err) {
-      // Fallback a la clave por defecto histórica si falla con la nueva ENCRYPTION_KEY
+      // Fallback a clave legada vía variable de entorno (nunca hardcodeada)
+      // Configurar ENCRYPTION_KEY_LEGACY en .env solo si hay registros cifrados con la clave anterior
+      const fallbackKey = process.env.ENCRYPTION_KEY_LEGACY || null;
+      if (!fallbackKey) {
+        throw err; // Sin clave legada configurada → error limpio
+      }
       try {
-        const fallbackKey = '12345678901234567890123456789012';
         const decipher = crypto.createDecipheriv(
           this.algorithm,
           Buffer.from(fallbackKey),

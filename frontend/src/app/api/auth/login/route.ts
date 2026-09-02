@@ -29,12 +29,12 @@ export async function POST(req: NextRequest) {
       usuario: data.usuario,
     });
 
-    // También setear como cookie httpOnly (capa extra de seguridad)
+    // Cookie httpOnly — expiración alineada con JWT (24h)
     response.cookies.set('auth_token', data.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 días
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24, // 24h — alineado con JWT expiresIn
       path: '/',
     });
 

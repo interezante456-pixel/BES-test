@@ -22,8 +22,8 @@ async function bootstrap() {
       ) {
         callback(null, true);
       } else {
-        // En caso de otro origen, permitir para evitar errores 500 no capturados
-        callback(null, true);
+        // A5: Rechazar orígenes no autorizados explícitamente
+        callback(new Error('Origen no permitido por política CORS'));
       }
     },
     credentials: true,

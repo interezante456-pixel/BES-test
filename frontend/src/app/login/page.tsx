@@ -29,6 +29,11 @@ export default function LoginPage() {
 
       const data = await response.json();
 
+      if (response.status === 429) {
+        setError('Demasiados intentos fallidos. Espera un momento e intenta de nuevo.');
+        return;
+      }
+
       if (!response.ok) {
         setError(data.message || 'Error al iniciar sesión');
         return;

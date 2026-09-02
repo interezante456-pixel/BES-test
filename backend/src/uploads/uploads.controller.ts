@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('uploads')
 export class UploadsController {
+  @UseGuards(JwtAuthGuard)
   @Get(':filename')
   serveFile(@Param('filename') filename: string, @Res() res: Response) {
     // Sanitizar el nombre: solo permitir caracteres seguros para evitar path traversal

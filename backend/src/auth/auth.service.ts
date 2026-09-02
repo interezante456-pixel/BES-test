@@ -18,7 +18,7 @@ export class AuthService {
     private auditService: AuditService,
   ) {}
 
-  async register(data: any) {
+  async register(data: any, ip?: string, userAgent?: string) {
     const nombres = data.nombres || data.nombre || '';
     const apellidos = data.apellidos || '';
     const dni = data.dni || '';
@@ -59,6 +59,8 @@ export class AuthService {
       entidad: 'Usuario',
       entidadId: user.id,
       detalles: { email: user.email, nombre: fullName, dni: user.dni },
+      ipAddress: ip,
+      userAgent,
     });
 
     const payload = {
@@ -88,7 +90,7 @@ export class AuthService {
     };
   }
 
-  async login(data: any) {
+  async login(data: any, ip?: string, userAgent?: string) {
     const user = await this.prisma.usuario.findUnique({
       where: { email: data.email },
     });
@@ -104,6 +106,8 @@ export class AuthService {
         accion: 'LOGIN_FALLIDO',
         entidad: 'Usuario',
         detalles: { email: data.email, motivo: 'Contraseña incorrecta' },
+        ipAddress: ip,
+        userAgent,
       });
       throw new UnauthorizedException('Credenciales incorrectas');
     }
@@ -114,6 +118,8 @@ export class AuthService {
       entidad: 'Usuario',
       entidadId: user.id,
       detalles: { email: user.email },
+      ipAddress: ip,
+      userAgent,
     });
 
     const fullName = `${user.nombres} ${user.apellidos}`.trim();
