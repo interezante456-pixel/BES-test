@@ -43,8 +43,9 @@ export function useEmpresas() {
         setSyncingEmpresas(prev => ({ ...prev, [data.empresaId]: false }));
         const emp = empresasRef.current.find(e => e.id === data.empresaId);
         const name = emp ? (emp.razonSocial || emp.ruc) : 'Empresa';
+        const portalName = data.portal === 'SUNAFIL' ? 'Casilla SUNAFIL' : 'Buzón SUNAT';
         useSyncStore.getState().recordEmpresaSync(name, true);
-        toast.success(`Sincronización completada: ${name}`, 'Buzón SUNAT');
+        toast.success(`Sincronización completada: ${name}`, portalName);
         fetchEmpresas();
       };
 
@@ -53,7 +54,7 @@ export function useEmpresas() {
         const emp = empresasRef.current.find(e => e.id === data.empresaId);
         const name = emp ? (emp.razonSocial || emp.ruc) : 'Empresa';
         useSyncStore.getState().recordEmpresaSync(`${name} (Error)`, false);
-        toast.error(data.message || 'Error de conexión con SUNAT', `Error: ${name}`);
+        toast.error(data.message || 'Error de conexión', `Error: ${name}`);
         fetchEmpresas();
       };
 
@@ -94,16 +95,15 @@ export function useEmpresas() {
   const handleSyncSunafil = async (empresaId: string) => {
     try {
       setSyncingEmpresas(prev => ({ ...prev, [empresaId]: true }));
+      const emp = empresasRef.current.find(e => e.id === empresaId);
+      const name = emp ? (emp.razonSocial || emp.ruc) : 'Empresa';
       useSyncStore.getState().startSync(1, 'SUNAFIL');
-      toast.info("Iniciando conexión con SUNAFIL...", "Sincronizando");
+      toast.info(`Iniciando conexión SUNAFIL para ${name}...`, "Sincronizando");
       const res = await api.post(`/scraper/sync-sunafil/${empresaId}`, {});
-      await fetchEmpresas();
-      toast.success("Sincronización SUNAFIL finalizada con éxito");
       return res.data;
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Error al sincronizar SUNAFIL");
-    } finally {
       setSyncingEmpresas(prev => ({ ...prev, [empresaId]: false }));
+      toast.error(error?.response?.data?.message || "Error al sincronizar SUNAFIL");
     }
   };
 
@@ -123,12 +123,39 @@ export function useEmpresas() {
       const res = await api.post('/scraper/sync-all', {});
       const count = res.data.count ?? activeEmpresas.length;
       useSyncStore.getState().startSync(count, 'SUNAT');
-      toast.info(`Se encolaron ${count} empresas activas para sincronización.`, 'Sincronización Masiva');
+      toast.info(`Se encolaron ${count} empresas activas para sincronización SUNAT.`, 'Sincronización Masiva');
     } catch (error) {
       toast.error("Error al iniciar la sincronización masiva");
       setSyncingEmpresas({});
     } finally {
       setSyncingAll(false);
+    }
+  };
+
+  const [syncingSunafilAll, setSyncingSunafilAll] = useState(false);
+
+  const handleSyncSunafilAll = async () => {
+    const activeEmpresas = empresas.filter(e => e.activo !== false && e.habilitadoSunafil === true);
+    if (activeEmpresas.length === 0) {
+      toast.warning("No hay empresas activas de SUNAFIL para sincronizar");
+      return;
+    }
+
+    setSyncingSunafilAll(true);
+    const newSyncingState = { ...syncingEmpresas };
+    activeEmpresas.forEach(emp => { newSyncingState[emp.id] = true; });
+    setSyncingEmpresas(newSyncingState);
+
+    try {
+      const res = await api.post('/scraper/sync-all-sunafil', {});
+      const count = res.data.count ?? activeEmpresas.length;
+      useSyncStore.getState().startSync(count, 'SUNAFIL');
+      toast.info(`Se encolaron ${count} empresas activas para sincronización SUNAFIL.`, 'Sincronización Masiva SUNAFIL');
+    } catch (error) {
+      toast.error("Error al iniciar la sincronización masiva de SUNAFIL");
+      setSyncingEmpresas({});
+    } finally {
+      setSyncingSunafilAll(false);
     }
   };
 
@@ -168,9 +195,11 @@ export function useEmpresas() {
     loading,
     syncingEmpresas,
     syncingAll,
+    syncingSunafilAll,
     handleSync,
     handleSyncSunafil,
     handleSyncAll,
+    handleSyncSunafilAll,
     toggleEmpresaActivo,
     deleteEmpresa,
     saveEmpresa,

@@ -12,25 +12,45 @@ import { SunafilScraperService } from './sunafil/sunafil-scraper.service';
 import { SunafilAuthService } from './sunafil/sunafil-auth.service';
 import { SunafilDownloaderService } from './sunafil/sunafil-downloader.service';
 
+import { SunafilScraperProcessor } from './sunafil/sunafil-scraper.processor';
+
 @Module({
   imports: [
     EncryptionModule,
-    BullModule.registerQueue({
-      name: 'sunat-scraper-queue',
-      streams: {
-        events: {
-          maxLen: 100,
+    BullModule.registerQueue(
+      {
+        name: 'sunat-scraper-queue',
+        streams: {
+          events: {
+            maxLen: 100,
+          },
+        },
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 60000,
+          },
+          removeOnComplete: true,
         },
       },
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 60000,
+      {
+        name: 'sunafil-scraper-queue',
+        streams: {
+          events: {
+            maxLen: 100,
+          },
         },
-        removeOnComplete: true,
+        defaultJobOptions: {
+          attempts: 2,
+          backoff: {
+            type: 'exponential',
+            delay: 30000,
+          },
+          removeOnComplete: true,
+        },
       },
-    }),
+    ),
   ],
   controllers: [ScraperController, QueueController],
   providers: [
@@ -40,6 +60,7 @@ import { SunafilDownloaderService } from './sunafil/sunafil-downloader.service';
     CronService,
     PdfParserService,
     SunafilScraperService,
+    SunafilScraperProcessor,
     SunafilAuthService,
     SunafilDownloaderService,
   ],

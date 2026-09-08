@@ -64,7 +64,9 @@ export default function SunafilEmpresasPage() {
     empresas,
     loading,
     syncingEmpresas,
+    syncingSunafilAll,
     handleSyncSunafil,
+    handleSyncSunafilAll,
     toggleEmpresaActivo,
     deleteEmpresa,
     saveEmpresa,
@@ -221,6 +223,17 @@ export default function SunafilEmpresasPage() {
 
         {/* Toolbar de Botones */}
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Sincronizar Todas */}
+          <button
+            onClick={handleSyncSunafilAll}
+            disabled={syncingSunafilAll || sunafilEmpresas.length === 0}
+            className="flex items-center gap-2 bg-indigo-600/20 border border-indigo-500/30 hover:bg-indigo-600/30 text-indigo-200 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all disabled:opacity-40 whitespace-nowrap shadow-lg shadow-indigo-500/10"
+            title="Sincronizar todas las empresas SUNAFIL activas"
+          >
+            <RefreshCw className={`w-4 h-4 text-indigo-400 ${syncingSunafilAll ? 'animate-spin' : ''}`} />
+            <span>{syncingSunafilAll ? 'Sincronizando...' : 'Sincronizar Todas'}</span>
+          </button>
+
           {/* Exportar */}
           <button
             onClick={handleExport}
@@ -299,8 +312,7 @@ export default function SunafilEmpresasPage() {
           <table className="w-full text-left border-collapse">
             <thead className="bg-white/[0.02] text-gray-400 text-xs font-bold uppercase tracking-wider border-b border-white/5">
               <tr>
-                <th className="py-4 px-6">Empresa / RUC</th>
-                <th className="py-4 px-6">Módulo Laboral</th>
+                <th className="py-4 px-6">Empresa / RUC / Credenciales</th>
                 <th className="py-4 px-6">Términos Casilla</th>
                 <th className="py-4 px-6">Última Sincro</th>
                 <th className="py-4 px-6">Estado Sincro</th>
@@ -310,14 +322,14 @@ export default function SunafilEmpresasPage() {
             <tbody className="divide-y divide-white/5 text-sm text-gray-300">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-500">
+                  <td colSpan={5} className="py-12 text-center text-gray-500">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-400" />
                     Cargando empresas SUNAFIL...
                   </td>
                 </tr>
               ) : filteredEmpresas.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-500">
+                  <td colSpan={5} className="py-12 text-center text-gray-500">
                     <Building2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     <p className="font-semibold text-gray-400">No hay empresas asignadas a SUNAFIL.</p>
                     <p className="text-xs text-gray-600 mt-1">
@@ -337,17 +349,17 @@ export default function SunafilEmpresasPage() {
                         isDeshabilitado ? 'opacity-60 bg-black/20' : ''
                       }`}
                     >
-                      {/* Empresa / RUC */}
+                      {/* Empresa / RUC / Credenciales */}
                       <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
                           <div
-                            className={`w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center border font-bold shrink-0 transition-all ${
+                            className={`w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center border transition-all ${
                               isDeshabilitado
                                 ? 'from-gray-900 to-gray-800 border-white/5 text-gray-500'
                                 : 'from-indigo-950 to-indigo-900 border-indigo-500/20 text-indigo-300 group-hover:from-indigo-600 group-hover:to-purple-600 group-hover:text-white'
                             }`}
                           >
-                            {emp.razonSocial.charAt(0).toUpperCase()}
+                            <Building2 className={`w-5 h-5 ${isDeshabilitado ? 'text-gray-500' : 'text-indigo-300 group-hover:text-white'}`} />
                           </div>
                           <div>
                             <div className="text-sm font-bold text-white mb-0.5 flex items-center gap-2">
@@ -358,23 +370,27 @@ export default function SunafilEmpresasPage() {
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xs font-mono text-gray-500">RUC: {emp.ruc}</span>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="text-xs font-mono text-gray-400">RUC: {emp.ruc}</span>
+                              {emp.usuarioSol && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
+                                  <span className="text-[10px] text-cyan-400/70 font-sans font-semibold">SOL:</span>
+                                  {emp.usuarioSol}
+                                </span>
+                              )}
                               {emp.habilitadoSunat !== false && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                  + SUNAT
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  SUNAT
+                                </span>
+                              )}
+                              {emp.habilitadoSunafil && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                                  SUNAFIL
                                 </span>
                               )}
                             </div>
                           </div>
                         </div>
-                      </td>
-
-                      {/* Módulo Laboral */}
-                      <td className="py-4 px-6">
-                        <span className="text-xs font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-xl">
-                          Casilla Electrónica
-                        </span>
                       </td>
 
                       {/* Términos Casilla */}

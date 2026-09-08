@@ -23,6 +23,7 @@ import { SunafilScraperService } from './sunafil/sunafil-scraper.service';
 export class ScraperController {
   constructor(
     @InjectQueue('sunat-scraper-queue') private scraperQueue: Queue,
+    @InjectQueue('sunafil-scraper-queue') private sunafilQueue: Queue,
     private prisma: PrismaService,
     private encryptionService: EncryptionService,
     private sunatScraperService: SunatScraperService,
@@ -160,7 +161,7 @@ export class ScraperController {
       );
     }
 
-    // Vaciar y limpiar la cola
+    // Vaciar y limpiar la cola de SUNAT
     await this.scraperQueue.drain(true);
     await this.scraperQueue.clean(0, 1000, 'active');
     await this.scraperQueue.clean(0, 1000, 'wait');
@@ -168,8 +169,16 @@ export class ScraperController {
     await this.scraperQueue.clean(0, 1000, 'paused');
     await this.scraperQueue.clean(0, 1000, 'failed');
 
+    // Vaciar y limpiar la cola de SUNAFIL
+    await this.sunafilQueue.drain(true);
+    await this.sunafilQueue.clean(0, 1000, 'active');
+    await this.sunafilQueue.clean(0, 1000, 'wait');
+    await this.sunafilQueue.clean(0, 1000, 'delayed');
+    await this.sunafilQueue.clean(0, 1000, 'paused');
+    await this.sunafilQueue.clean(0, 1000, 'failed');
+
     return {
-      message: 'Cola de tareas de scraping limpiada y cancelada con éxito',
+      message: 'Colas de tareas de scraping (SUNAT y SUNAFIL) limpiadas y canceladas con éxito',
     };
   }
 
@@ -220,10 +229,77 @@ export class ScraperController {
       );
     }
 
-    // Ejecutar sincronización de SUNAFIL de forma asíncrona / directa
-    return this.sunafilScraperService.sincronizarEmpresa(empresaId, {
-      descargarPdfs: false,
-    });
+    if (empresa.activo === false) {
+      throw new ForbiddenException(
+        'La empresa se encuentra deshabilitada',
+      );
+    }
+
+    // Encolar tarea de scraping SUNAFIL con prioridad
+    await this.sunafilQueue.add(
+      'scrape-sunafil',
+      {
+        empresaId,
+        usuarioId: empresa.usuarioId,
+        callerUserId: callerId,
+      },
+      { priority: 1 },
+    );
+
+    return { message: 'Sincronización SUNAFIL encolada', status: 'pending' };
+  }
+
+  @Post('sync-all-sunafil')
+  async syncAllSunafilEmpresas(@Request() req: any) {
+    const { id: callerId, rol } = req.user;
+    let empresas: any[] = [];
+
+    if (rol === 'SUPER_ADMIN' || rol === 'ADMIN') {
+      // SUPER_ADMIN y ADMIN sincronizan todas las empresas ACTIVAS con SUNAFIL
+      empresas = await this.prisma.empresa.findMany({
+        where: {
+          activo: true,
+          habilitadoSunafil: true,
+          NOT: { usuarioSol: '' },
+        },
+        select: { id: true, usuarioId: true },
+      });
+    } else {
+      // USUARIO_LOCAL: solo las asignadas que estén ACTIVAS con SUNAFIL
+      const asignaciones = await this.prisma.empresaAsignacion.findMany({
+        where: {
+          usuarioId: callerId,
+          empresa: {
+            activo: true,
+            habilitadoSunafil: true,
+            NOT: { usuarioSol: '' },
+          },
+        },
+        include: { empresa: { select: { id: true, usuarioId: true } } },
+      });
+      empresas = asignaciones.map((a) => a.empresa);
+    }
+
+    if (!empresas || empresas.length === 0) {
+      return { message: 'No hay empresas activas con SUNAFIL para sincronizar', count: 0 };
+    }
+
+    const jobs = empresas.map((empresa) => ({
+      name: 'scrape-sunafil',
+      data: {
+        empresaId: empresa.id,
+        usuarioId: empresa.usuarioId,
+        callerUserId: callerId,
+      },
+      opts: { priority: 2 },
+    }));
+
+    await this.sunafilQueue.addBulk(jobs);
+
+    return {
+      message: 'Sincronización masiva de SUNAFIL encolada',
+      count: empresas.length,
+    };
   }
 
   /**
