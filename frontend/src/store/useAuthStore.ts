@@ -7,6 +7,7 @@ interface AuthState {
   user: User | null;
   setAuth: (token: string, user: User) => void;
   setUser: (user: User) => void;
+  updateUser: (partial: Partial<User>) => void;
   logout: () => Promise<void>;
 }
 
@@ -28,6 +29,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => {
     sessionStorage.setItem('user', JSON.stringify(user));
     set({ user });
+  },
+  updateUser: (partial) => {
+    set((state) => {
+      if (!state.user) return state;
+      const updatedUser = { ...state.user, ...partial };
+      sessionStorage.setItem('user', JSON.stringify(updatedUser));
+      return { user: updatedUser };
+    });
   },
   logout: async () => {
     // Limpiar la cookie httpOnly desde el servidor

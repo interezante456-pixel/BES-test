@@ -403,6 +403,7 @@ export class NotificacionesService implements OnModuleInit {
     if (empresaIds.length === 0) {
       return {
         total: 0,
+        noLeidas: 0,
         fiscalizacion: 0,
         cobranza: 0,
         accionesPrevias: 0,
@@ -427,6 +428,7 @@ export class NotificacionesService implements OnModuleInit {
 
     const [
       total,
+      noLeidas,
       fiscalizacion,
       cobranza,
       accionesPrevias,
@@ -435,6 +437,7 @@ export class NotificacionesService implements OnModuleInit {
       porVencer,
     ] = await Promise.all([
       this.prisma.notificacion.count({ where: baseWhere }),
+      this.prisma.notificacion.count({ where: { ...baseWhere, leidoGlobal: false } }),
       this.prisma.notificacion.count({
         where: { ...baseWhere, moduloSunafil: 'FISCALIZACION' },
       }),
@@ -463,6 +466,7 @@ export class NotificacionesService implements OnModuleInit {
 
     return {
       total,
+      noLeidas,
       fiscalizacion,
       cobranza,
       accionesPrevias,

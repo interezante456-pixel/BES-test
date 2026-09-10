@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Mail, RefreshCw, ChevronLeft, ChevronRight, Trash2, AlertTriangle, X } from 'lucide-react';
 import api from '@/lib/api';
 import { useEmpresas } from '../empresas/hooks/useEmpresas';
@@ -13,7 +14,17 @@ import { exportToExcel } from '@/lib/excelUtils';
 import { toast } from '@/store/useToastStore';
 
 export default function SunafilPage() {
+  const router = useRouter();
   const { user } = useAuthStore();
+  const canDelete = user?.rol === 'SUPER_ADMIN' || user?.rol === 'ADMIN';
+  const hasSunafil = user?.rol === 'SUPER_ADMIN' || (user?.modulosPermitidos || ['SUNAT']).includes('SUNAFIL');
+
+  // Si el usuario no tiene acceso a SUNAFIL, redirigir a /dashboard
+  useEffect(() => {
+    if (user && !hasSunafil) {
+      router.push('/dashboard');
+    }
+  }, [user, hasSunafil, router]);
   const [activeTab, setActiveTab] = useState('ALL');
   const [selectedEmpresa, setSelectedEmpresa] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,6 +48,7 @@ export default function SunafilPage() {
 
   const [metrics, setMetrics] = useState<SunafilMetrics>({
     total: 0,
+    noLeidas: 0,
     fiscalizacion: 0,
     cobranza: 0,
     accionesPrevias: 0,
@@ -256,12 +268,12 @@ export default function SunafilPage() {
         isRefreshing={loading}
         selectedCount={selectedIds.length}
         onDeleteSelected={
-          isSuperAdmin && selectedIds.length > 0
+          canDelete && selectedIds.length > 0
             ? () => setDeleteModalState({ open: true, type: 'selected' })
             : undefined
         }
         onDeleteAll={
-          isSuperAdmin && meta.total > 0
+          canDelete && meta.total > 0
             ? () => setDeleteModalState({ open: true, type: 'all' })
             : undefined
         }
@@ -273,11 +285,25 @@ export default function SunafilPage() {
         activeTab={activeTab}
         loading={loading}
         selectedIds={selectedIds}
+        canDelete={canDelete}
         onToggleSelect={handleToggleSelect}
         onToggleSelectAll={handleToggleSelectAll}
         onViewDetail={(notif) => {
           setSelectedNotif(notif);
           setIsDrawerOpen(true);
+          // Mark as read automatically when opening detail
+          if (!notif.leidoGlobal) {
+            api.patch(`/notificaciones/${notif.id}/read`).then(() => {
+              // Update local state to reflect read status
+              setNotificaciones((prev) =>
+                prev.map((n) =>
+                  n.id === notif.id ? { ...n, leidoGlobal: true } : n
+                )
+              );
+              // Refresh metrics to update noLeidas count
+              fetchMetrics();
+            }).catch(() => {/* silent */});
+          }
         }}
         onDeleteOne={(id) => {
           setDeleteModalState({ open: true, type: 'single', targetId: id });
@@ -324,6 +350,13 @@ export default function SunafilPage() {
           setSelectedNotif(null);
         }}
         notificacion={selectedNotif}
+        onNotificacionUpdated={(updated) => {
+          // Sync updated notification back into the table list
+          setNotificaciones((prev) =>
+            prev.map((n) => (n.id === updated.id ? { ...n, ...updated } : n))
+          );
+          setSelectedNotif(updated);
+        }}
       />
 
       {/* Modal de Confirmación de Eliminación */}

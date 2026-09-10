@@ -28,6 +28,7 @@ backend/uploads/*
 postgres_data/
 redis_data/
 *.sql
+!backend/prisma/migrations/**/*.sql
 
 # Generator scripts & presentation PDFs
 generate_pdf.js

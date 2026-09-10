@@ -15,7 +15,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma.service';
 import { EncryptionService } from '../encryption/encryption.service';
 import { SunatScraperService } from './sunat/sunat-scraper.service';
-import { CronService, ScheduleConfigDto } from './cron.service';
+import { CronService, ScheduleConfigDto, SunafilScheduleConfigDto } from './cron.service';
 import { SunafilScraperService } from './sunafil/sunafil-scraper.service';
 
 @UseGuards(JwtAuthGuard)
@@ -47,6 +47,24 @@ export class ScraperController {
       throw new ForbiddenException('Solo administradores pueden modificar la programación');
     }
     return this.cronService.updateScheduleConfig(body);
+  }
+
+  @Get('sunafil-schedule')
+  async getSunafilSchedule(@Request() req: any) {
+    const { rol } = req.user;
+    if (rol !== 'SUPER_ADMIN' && rol !== 'ADMIN') {
+      throw new ForbiddenException('Solo administradores pueden ver la programación SUNAFIL');
+    }
+    return this.cronService.getOrCreateSunafilConfig();
+  }
+
+  @Put('sunafil-schedule')
+  async updateSunafilSchedule(@Body() body: SunafilScheduleConfigDto, @Request() req: any) {
+    const { rol } = req.user;
+    if (rol !== 'SUPER_ADMIN' && rol !== 'ADMIN') {
+      throw new ForbiddenException('Solo administradores pueden modificar la programación SUNAFIL');
+    }
+    return this.cronService.updateSunafilScheduleConfig(body);
   }
 
   @Post('sync/:empresaId')

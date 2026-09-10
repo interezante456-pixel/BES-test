@@ -3,14 +3,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { Mail, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
 import { OraconLogo } from '@/components/OraconLogo';
+import { APP_CONFIG } from '@/config/version';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
 
@@ -92,13 +94,21 @@ export default function LoginPage() {
                 <Lock className="h-5 w-5 text-gray-500" />
               </div>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="block w-full pl-12 pr-4 py-3.5 bg-[#1f2937]/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200 outline-none"
+                className="block w-full pl-12 pr-12 py-3.5 bg-[#1f2937]/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200 outline-none"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-orange-400 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
           </div>
 
@@ -117,6 +127,17 @@ export default function LoginPage() {
             )}
           </button>
         </form>
+
+        {/* Identificador de Versión para Producción */}
+        <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-[11px] text-gray-500 font-mono">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            {APP_CONFIG.name}
+          </span>
+          <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-md text-gray-400 font-semibold tracking-wide">
+            {APP_CONFIG.version}
+          </span>
+        </div>
       </div>
     </div>
   );

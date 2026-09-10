@@ -8,12 +8,12 @@ import {
   AlertTriangle,
   Users,
   ShieldCheck,
-  Clock,
-  Sparkles,
+  Bell,
 } from 'lucide-react';
 
 export interface SunafilMetrics {
   total: number;
+  noLeidas: number;
   fiscalizacion: number;
   cobranza: number;
   accionesPrevias: number;
@@ -46,6 +46,8 @@ export const SunafilKpiCards: React.FC<SunafilKpiCardsProps> = ({
       border: 'border-indigo-500/30',
       activeBorder: 'border-indigo-400 bg-indigo-950/40 ring-2 ring-indigo-500/30',
       iconColor: 'text-indigo-400',
+      badge: metrics.noLeidas > 0 ? `${metrics.noLeidas} sin leer` : null,
+      badgeStyle: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
     },
     {
       id: 'FISCALIZACION',
@@ -102,56 +104,97 @@ export const SunafilKpiCards: React.FC<SunafilKpiCardsProps> = ({
       border: 'border-emerald-500/20',
       activeBorder: 'border-emerald-400 bg-emerald-950/40 ring-2 ring-emerald-500/30',
       iconColor: 'text-emerald-400',
+      badge: null,
+      badgeStyle: '',
     },
   ];
 
+  // Extra card: No Leídas — not clickable as a tab filter, just informational
+  const noLeidasCard = {
+    title: 'No Leídas',
+    subtitle: 'Pendientes de revisar',
+    count: metrics.noLeidas,
+    icon: Bell,
+    gradient: 'from-sky-600/20 to-blue-600/20',
+    border: metrics.noLeidas > 0 ? 'border-sky-400/60' : 'border-sky-500/20',
+    iconColor: 'text-sky-400',
+  };
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-      {cards.map((c) => {
-        const Icon = c.icon;
-        const isActive = activeTab === c.id;
+    <div className="space-y-3">
+      {/* Main module filter cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {cards.map((c) => {
+          const Icon = c.icon;
+          const isActive = activeTab === c.id;
 
-        return (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => onSelectTab(c.id)}
-            className={`text-left p-4 rounded-2xl border transition-all duration-200 relative overflow-hidden group cursor-pointer bg-[#111827] ${
-              isActive ? c.activeBorder : `${c.border} hover:border-white/20 hover:bg-white/[0.02]`
-            }`}
-          >
-            {/* Background gradient hint */}
-            <div
-              className={`absolute inset-0 bg-gradient-to-br ${c.gradient} opacity-20 pointer-events-none group-hover:opacity-40 transition-opacity`}
-            />
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onSelectTab(c.id)}
+              className={`text-left p-4 rounded-2xl border transition-all duration-200 relative overflow-hidden group cursor-pointer bg-[#111827] ${
+                isActive ? c.activeBorder : `${c.border} hover:border-white/20 hover:bg-white/[0.02]`
+              }`}
+            >
+              {/* Background gradient hint */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-br ${c.gradient} opacity-20 pointer-events-none group-hover:opacity-40 transition-opacity`}
+              />
 
-            <div className="relative z-10 flex flex-col justify-between h-full">
-              <div className="flex items-center justify-between mb-2">
-                <div className={`w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center ${c.iconColor}`}>
-                  <Icon className="w-4 h-4" />
+              <div className="relative z-10 flex flex-col justify-between h-full">
+                <div className="flex items-center justify-between mb-2">
+                  <div className={`w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center ${c.iconColor}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  {c.badge && (
+                    <span className={`text-[9px] font-bold border px-1.5 py-0.5 rounded-full animate-pulse ${c.badgeStyle}`}>
+                      {c.badge}
+                    </span>
+                  )}
                 </div>
-                {c.badge && (
-                  <span className="text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded-full animate-pulse">
-                    {c.badge}
-                  </span>
-                )}
+
+                <div>
+                  <div className="text-xl font-extrabold text-white font-mono tracking-tight">
+                    {loading ? '—' : c.count}
+                  </div>
+                  <div className="text-xs font-bold text-gray-200 line-clamp-1 mt-0.5">
+                    {c.title}
+                  </div>
+                  <div className="text-[10px] text-gray-400 line-clamp-1">
+                    {c.subtitle}
+                  </div>
+                </div>
               </div>
+            </button>
+          );
+        })}
+      </div>
 
-              <div>
-                <div className="text-xl font-extrabold text-white font-mono tracking-tight">
-                  {loading ? '—' : c.count}
-                </div>
-                <div className="text-xs font-bold text-gray-200 line-clamp-1 mt-0.5">
-                  {c.title}
-                </div>
-                <div className="text-[10px] text-gray-400 line-clamp-1">
-                  {c.subtitle}
-                </div>
+      {/* No Leídas — informational card (full width) */}
+      {metrics.noLeidas > 0 && (
+        <div className={`flex items-center justify-between px-5 py-3 rounded-2xl border bg-[#111827] relative overflow-hidden ${noLeidasCard.border}`}>
+          <div className={`absolute inset-0 bg-gradient-to-r ${noLeidasCard.gradient} opacity-15 pointer-events-none`} />
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="relative">
+              <div className={`w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center ${noLeidasCard.iconColor}`}>
+                <Bell className="w-4 h-4" />
               </div>
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-sky-400 animate-ping" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-sky-400" />
             </div>
-          </button>
-        );
-      })}
+            <div>
+              <span className="text-xs font-bold text-white">
+                {metrics.noLeidas} notificación{metrics.noLeidas !== 1 ? 'es' : ''} sin revisar
+              </span>
+              <p className="text-[10px] text-gray-400">Abre el detalle de cada una para marcarla como vista</p>
+            </div>
+          </div>
+          <span className="relative z-10 text-2xl font-extrabold text-sky-400 font-mono">
+            {loading ? '—' : metrics.noLeidas}
+          </span>
+        </div>
+      )}
     </div>
   );
 };

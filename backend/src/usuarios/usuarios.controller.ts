@@ -19,6 +19,12 @@ import { Roles } from '../auth/roles.decorator';
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
+  // Obtener perfil fresco del usuario autenticado (incluye modulosPermitidos y rol vigentes)
+  @Get('profile/me')
+  getProfile(@Request() req: any) {
+    return this.usuariosService.getProfile(req.user.id);
+  }
+
   // Actualizar perfil del usuario logueado (Únicamente la contraseña)
   @Patch('profile/me')
   updateMe(

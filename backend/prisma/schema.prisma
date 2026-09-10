@@ -193,6 +193,15 @@ model ConfiguracionSistema {
   updatedAt              DateTime @updatedAt
 }
 
+model ConfiguracionSunafilSistema {
+  id                     String   @id @default("default")
+  sincroAutomaticaActiva Boolean  @default(true)
+  diasSemana             Int[]    @default([1, 2, 3, 4, 5])       // Lun-Vie por defecto (días hábiles)
+  horas                  String[] @default(["07:00"])             // 1 vez al día a las 7 AM
+  soloActivas            Boolean  @default(true)                  // Solo re-escanear notificaciones activas/pendientes
+  updatedAt              DateTime @updatedAt
+}
+
 model EventoCalendario {
   id          String   @id @default(uuid())
   empresaId   String?

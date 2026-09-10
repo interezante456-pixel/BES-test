@@ -6,6 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { EventsGateway } from '../events/events.gateway';
 import * as bcrypt from 'bcrypt';
 
 export function generateAutoEmail(nombres: string, apellidos: string, dni: string): string {
@@ -36,7 +37,28 @@ export function generateAutoEmail(nombres: string, apellidos: string, dni: strin
 
 @Injectable()
 export class UsuariosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly eventsGateway: EventsGateway,
+  ) {}
+
+  async getProfile(id: string) {
+    const user = await this.prisma.usuario.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        nombres: true,
+        apellidos: true,
+        dni: true,
+        rol: true,
+        modulosPermitidos: true,
+        telegramChatId: true,
+      },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    return user;
+  }
 
   async findAll(callerRol: string) {
     const where =
@@ -228,7 +250,7 @@ export class UsuariosService {
       updateData.email = generateAutoEmail(finalNombres, finalApellidos, finalDni);
     }
 
-    return this.prisma.usuario.update({
+    const updated = await this.prisma.usuario.update({
       where: { id },
       data: updateData,
       select: {
@@ -242,6 +264,19 @@ export class UsuariosService {
         telegramChatId: true,
       },
     });
+
+    // Notificar en tiempo real al usuario si cambiaron sus módulos o rol
+    if (data.modulosPermitidos !== undefined || data.rol !== undefined) {
+      const payload = {
+        userId: id,
+        modulosPermitidos: updated.modulosPermitidos,
+        rol: updated.rol,
+      };
+      this.eventsGateway.emitToUser(id, 'user:permissions-updated', payload);
+      this.eventsGateway.emitAll('user:permissions-updated', payload);
+    }
+
+    return updated;
   }
 
   async remove(id: string) {

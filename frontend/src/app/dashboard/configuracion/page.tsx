@@ -5,7 +5,9 @@ import { Settings, Clock, Zap, Bell, Database } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useScheduleConfig } from './hooks/useScheduleConfig';
+import { useSunafilScheduleConfig } from './hooks/useSunafilScheduleConfig';
 import { ScheduleTab } from './components/ScheduleTab';
+import { SunafilScheduleTab } from './components/SunafilScheduleTab';
 import { QueueTab } from './components/QueueTab';
 import { NotificationsTab } from './components/NotificationsTab';
 import { DatabaseTab } from './components/DatabaseTab';
@@ -29,6 +31,10 @@ export default function ConfiguracionPage() {
 
   // Custom hook for schedule logic
   const scheduleConfig = useScheduleConfig(isAdmin);
+  const sunafilScheduleConfig = useSunafilScheduleConfig(isAdmin);
+
+  // Sub-tab for schedule section
+  const [scheduleSubTab, setScheduleSubTab] = useState<'sunat' | 'sunafil'>('sunat');
 
   useEffect(() => {
     if (user && !isAdmin) {
@@ -158,7 +164,38 @@ export default function ConfiguracionPage() {
 
       {/* Tab Panels */}
       {activeTab === 'schedule' && isAdmin && (
-        <ScheduleTab {...scheduleConfig} />
+        <div className="space-y-4">
+          {/* Sub-pestanas SUNAT / SUNAFIL */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setScheduleSubTab('sunat')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                scheduleSubTab === 'sunat'
+                  ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300'
+                  : 'border-white/10 text-gray-400 hover:text-white hover:bg-white/[0.03]'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-400" />
+              SUNAT
+              {scheduleConfig.hasUnsavedChanges && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+            </button>
+            <button
+              onClick={() => setScheduleSubTab('sunafil')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                scheduleSubTab === 'sunafil'
+                  ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300'
+                  : 'border-white/10 text-gray-400 hover:text-white hover:bg-white/[0.03]'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-purple-400" />
+              SUNAFIL
+              {sunafilScheduleConfig.hasUnsavedChanges && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+            </button>
+          </div>
+
+          {scheduleSubTab === 'sunat' && <ScheduleTab {...scheduleConfig} />}
+          {scheduleSubTab === 'sunafil' && <SunafilScheduleTab {...sunafilScheduleConfig} />}
+        </div>
       )}
 
       {activeTab === 'queue' && isAdmin && (

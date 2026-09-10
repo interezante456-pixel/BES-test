@@ -14,9 +14,11 @@ import { OraconLogo } from '@/components/OraconLogo';
 import ToastContainer from '@/components/ui/ToastContainer';
 import SyncProgressWidget from '@/components/SyncProgressWidget';
 import { useSyncStore } from '@/store/useSyncStore';
+import { toast } from '@/store/useToastStore';
+import { APP_CONFIG } from '@/config/version';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, user, updateUser, logout } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
@@ -53,6 +55,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // Cargar estadísticas iniciales
     fetchStats();
 
+    // Sincronizar perfil fresco del servidor en F5 o carga inicial
+    api.get('/usuarios/profile/me')
+      .then((res) => {
+        if (res.data) {
+          updateUser({
+            modulosPermitidos: res.data.modulosPermitidos,
+            rol: res.data.rol,
+            nombres: res.data.nombres,
+            apellidos: res.data.apellidos,
+            dni: res.data.dni,
+            email: res.data.email,
+            telegramChatId: res.data.telegramChatId,
+          });
+        }
+      })
+      .catch((err) => {
+        console.error("Error al sincronizar perfil fresco", err);
+      });
+
     // Reutilizar la conexión del WebSocket compartido
     const socket = getSocket();
 
@@ -66,23 +87,65 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       fetchStats(); // Refrescar estadísticas igualmente
     };
 
-
     const handleNotificacionLeidaGlobal = () => {
       fetchStats(); // Refrescar estadísticas y badges en tiempo real
+    };
+
+    // Actualización de permisos en tiempo real sin relogueo
+    const handlePermissionsUpdated = (data: any) => {
+      if (data.userId === user.id || !data.userId) {
+        console.log('[WS] Permisos de usuario actualizados:', data);
+        updateUser({
+          modulosPermitidos: data.modulosPermitidos,
+          rol: data.rol,
+        });
+
+        const newModulos = data.modulosPermitidos || [];
+        const isStillSuperAdmin = data.rol === 'SUPER_ADMIN';
+
+        // Si el usuario perdió acceso a SUNAFIL y está dentro de una ruta de SUNAFIL
+        if (!isStillSuperAdmin && !newModulos.includes('SUNAFIL')) {
+          if (pathname.startsWith('/dashboard/sunafil')) {
+            router.push('/dashboard');
+            toast.warning(
+              'El módulo SUNAFIL ha sido desasignado de tu cuenta por un administrador.',
+              'Acceso Restringido'
+            );
+          } else {
+            toast.info('Tus módulos asignados han sido actualizados por un administrador.');
+          }
+        } else {
+          toast.info('Tus permisos y módulos asignados han sido actualizados.');
+        }
+      }
     };
 
     socket.on(`sync-finished-${user.id}`, handleSyncFinished);
     socket.on(`sync-error-${user.id}`, handleSyncError);
     socket.on('notificacion:leida', handleNotificacionLeidaGlobal);
     socket.on('notificacion:todas_leidas', handleNotificacionLeidaGlobal);
+    socket.on(`user:permissions-updated-${user.id}`, handlePermissionsUpdated);
+    socket.on('user:permissions-updated', handlePermissionsUpdated);
 
     return () => {
       socket.off(`sync-finished-${user.id}`, handleSyncFinished);
       socket.off(`sync-error-${user.id}`, handleSyncError);
       socket.off('notificacion:leida', handleNotificacionLeidaGlobal);
       socket.off('notificacion:todas_leidas', handleNotificacionLeidaGlobal);
+      socket.off(`user:permissions-updated-${user.id}`, handlePermissionsUpdated);
+      socket.off('user:permissions-updated', handlePermissionsUpdated);
     };
-  }, [isAuthenticated, user, router, fetchStats]);
+  }, [isAuthenticated, user?.id, router, fetchStats, updateUser, pathname]);
+
+  // Protección de ruta automática: Si se desasigna un módulo mientras navega
+  useEffect(() => {
+    if (!user || user.rol === 'SUPER_ADMIN') return;
+    const modulos = user.modulosPermitidos || ['SUNAT'];
+    if (pathname.startsWith('/dashboard/sunafil') && !modulos.includes('SUNAFIL')) {
+      router.push('/dashboard');
+      toast.warning('No tienes permisos asignados para el módulo SUNAFIL.', 'Acceso Restringido');
+    }
+  }, [pathname, user?.modulosPermitidos, user?.rol, router]);
 
   // Cerrar menú móvil cuando cambie la ruta
   useEffect(() => {
@@ -408,6 +471,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <LogOut className="w-4 h-4" />
             Cerrar Sesión
           </button>
+
+          {/* Versión del Sistema */}
+          <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-gray-500 font-mono">
+            <span>BES Suite</span>
+            <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-gray-400 font-semibold tracking-wide">
+              {APP_CONFIG.version}
+            </span>
+          </div>
         </div>
       </aside>
 
