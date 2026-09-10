@@ -43,9 +43,6 @@ lerna-debug.log*
 .env.production
 .env.local
 
-# Scripts de diagnóstico y migración (no deben ir en el repo)
-check-fallback-key.ts
-migrate-encryption.ts
 
 # temp directory
 .temp

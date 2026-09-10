@@ -1,3 +1,7 @@
+doc/
+arquitectura.html
+
+
 # Dependencies
 node_modules/
 .pnp
