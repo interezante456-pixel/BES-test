@@ -235,45 +235,20 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
             </button>
           </div>
 
-          {/* Field: Clave SOL */}
+          {/* Field: Clave SOL Protegida */}
           <div className="bg-white/5 border border-white/5 rounded-2xl p-3 flex items-center justify-between gap-3">
-            <div className="flex-1">
+            <div>
               <div className="text-[10px] font-bold uppercase text-gray-400 mb-0.5">Clave SOL</div>
-              <div className="text-sm font-mono font-semibold text-white flex items-center gap-2">
-                {empresa.claveSol ? (
-                  showPassword ? (
-                    empresa.claveSol
-                  ) : (
-                    '••••••••••••'
-                  )
-                ) : (
-                  <span className="text-gray-500 italic">No disponible</span>
-                )}
-                {empresa.claveSol && (
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-gray-400 hover:text-white p-0.5"
-                    title={showPassword ? 'Ocultar' : 'Mostrar'}
-                  >
-                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
-                )}
+              <div className="text-xs text-gray-400 flex items-center gap-1.5 font-medium">
+                <span>••••••••••••</span>
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-bold">
+                  PROTEGIDA
+                </span>
               </div>
             </div>
-            {empresa.claveSol && (
-              <button
-                onClick={() => handleCopy(empresa.claveSol, 'clave')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  copiedField === 'clave'
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10'
-                }`}
-              >
-                {copiedField === 'clave' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {copiedField === 'clave' ? '¡Copiado!' : 'Copiar'}
-              </button>
-            )}
+            <span className="text-[11px] text-gray-500 italic">
+              Autocompletado seguro
+            </span>
           </div>
 
           {/* Alerta de Términos y Condiciones Pendientes */}

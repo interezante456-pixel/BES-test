@@ -2,6 +2,7 @@ import {
   Injectable,
   ForbiddenException,
   NotFoundException,
+  BadRequestException,
   OnModuleInit,
   Logger,
 } from '@nestjs/common';
@@ -99,13 +100,17 @@ export class NotificacionesService implements OnModuleInit {
   }
 
   private async buildPaginatedQuery(empresaIds: string[], leidoGlobal: boolean, filters: any) {
-    const { page = 1, limit = 50, empresa, search, startDate, endDate } = filters;
+    const { page = 1, limit = 50, empresa, search, startDate, endDate, origen = 'SUNAT' } = filters;
     const skip = (page - 1) * limit;
 
     const whereParams: any = {
       empresaId: { in: empresaIds },
       leidoGlobal,
     };
+
+    if (origen && origen !== 'ALL') {
+      whereParams.origen = origen;
+    }
 
     if (empresa) {
       whereParams.empresaId = empresa;
@@ -187,7 +192,7 @@ export class NotificacionesService implements OnModuleInit {
   }
 
   /** Marca TODAS las notificaciones sin leer como leídas globalmente */
-  async markAllAsRead(usuarioId: string, rol: string) {
+  async markAllAsRead(usuarioId: string, rol: string, origen: string = 'SUNAT') {
     const empresaIds = await this.getEmpresaIds(usuarioId, rol);
     if (empresaIds.length === 0) return { count: 0 };
 
@@ -199,9 +204,17 @@ export class NotificacionesService implements OnModuleInit {
       ? `${usuario.nombres} ${usuario.apellidos}`.trim()
       : 'Usuario desconocido';
 
-    // Obtener las que aún no han sido leídas globalmente
+    const whereParams: any = {
+      empresaId: { in: empresaIds },
+      leidoGlobal: false,
+    };
+    if (origen && origen !== 'ALL') {
+      whereParams.origen = origen;
+    }
+
+    // Obtener las que aún no han sido leídas globalmente para el portal indicado
     const sinLeer = await this.prisma.notificacion.findMany({
-      where: { empresaId: { in: empresaIds }, leidoGlobal: false },
+      where: whereParams,
       select: { id: true },
     });
 
@@ -685,4 +698,79 @@ export class NotificacionesService implements OnModuleInit {
       },
     };
   }
+
+  /** Subir un PDF manualmente para una notificación */
+  async uploadManualPdf(
+    notificacionId: string,
+    file: any,
+    usuarioId: string,
+    rol: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Debe proporcionar un archivo PDF.');
+    }
+
+    if (!file.mimetype?.includes('pdf') && !file.originalname?.toLowerCase().endsWith('.pdf')) {
+      throw new BadRequestException('El archivo debe ser un documento PDF válido.');
+    }
+
+    const notif = await this.prisma.notificacion.findUnique({
+      where: { id: notificacionId },
+      include: { empresa: true },
+    });
+
+    if (!notif) {
+      throw new NotFoundException('Notificación no encontrada.');
+    }
+
+    if (rol !== 'SUPER_ADMIN' && rol !== 'ADMIN') {
+      const asignacion = await this.prisma.empresaAsignacion.findFirst({
+        where: { usuarioId, empresaId: notif.empresaId },
+      });
+      if (!asignacion) {
+        throw new ForbiddenException('No tienes permiso para gestionar esta notificación.');
+      }
+    }
+
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const cleanOriginalName = (file.originalname || 'documento.pdf').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeFileName = `${notif.id}_${cleanOriginalName.toLowerCase().endsWith('.pdf') ? cleanOriginalName : cleanOriginalName + '.pdf'}`;
+    const targetFilePath = path.join(uploadDir, safeFileName);
+
+    await fs.promises.writeFile(targetFilePath, file.buffer);
+
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    const finalHref = `${backendUrl}/uploads/${safeFileName}`;
+
+    let parsedData: any = {};
+    try {
+      parsedData = await this.pdfParserService.parsePdfBuffer(file.buffer);
+    } catch (e: any) {
+      this.logger.warn(`No se pudo parsear metadata del PDF subido: ${e.message}`);
+    }
+
+    const updated = await this.prisma.notificacion.update({
+      where: { id: notificacionId },
+      data: {
+        rutaArchivoPdf: finalHref,
+        pdfDescargado: true,
+        ...(parsedData.montoExigible ? { montoExigible: parsedData.montoExigible } : {}),
+        ...(parsedData.expedienteCoactivo ? { expedienteCoactivo: parsedData.expedienteCoactivo } : {}),
+      },
+      include: {
+        empresa: { select: { id: true, razonSocial: true, ruc: true } },
+      },
+    });
+
+    this.logger.log(
+      `[PDF Manual] PDF subido con éxito para notificación ${notificacionId} (${file.size} bytes).`,
+    );
+
+    return updated;
+  }
 }
+

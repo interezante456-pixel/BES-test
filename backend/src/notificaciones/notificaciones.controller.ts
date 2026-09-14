@@ -9,7 +9,10 @@ import {
   Post,
   Body,
   Query,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { NotificacionesService } from './notificaciones.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UpdateGestionDto, CreateComentarioDto } from './dto/update-gestion.dto';
@@ -50,6 +53,7 @@ export class NotificacionesController {
     @Query('search') search?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('origen') origen?: string,
   ) {
     return this.notificacionesService.findBandejaByUser(
       req.user.id,
@@ -61,6 +65,7 @@ export class NotificacionesController {
         search,
         startDate,
         endDate,
+        origen: origen || 'SUNAT',
       },
     );
   }
@@ -75,6 +80,7 @@ export class NotificacionesController {
     @Query('search') search?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('origen') origen?: string,
   ) {
     return this.notificacionesService.findArchivoByUser(
       req.user.id,
@@ -86,6 +92,7 @@ export class NotificacionesController {
         search,
         startDate,
         endDate,
+        origen: origen || 'SUNAT',
       },
     );
   }
@@ -138,10 +145,14 @@ export class NotificacionesController {
     return this.notificacionesService.markAsRead(id, req.user.id);
   }
 
-  /** Marcar TODAS como leídas globalmente */
+  /** Marcar TODAS como leídas globalmente para el portal correspondiente */
   @Patch('mark-all-read')
-  markAllAsRead(@Request() req: any) {
-    return this.notificacionesService.markAllAsRead(req.user.id, req.user.rol);
+  markAllAsRead(@Request() req: any, @Query('origen') origen?: string) {
+    return this.notificacionesService.markAllAsRead(
+      req.user.id,
+      req.user.rol,
+      origen || 'SUNAT',
+    );
   }
 
   /** Actualizar estado de gestión, responsable, notas o compromiso */
@@ -210,6 +221,26 @@ export class NotificacionesController {
   @Delete()
   removeAll(@Request() req: any) {
     return this.notificacionesService.removeAllByUser(
+      req.user.id,
+      req.user.rol,
+    );
+  }
+
+  /** Subir un PDF manualmente para una notificación */
+  @Post(':id/pdf')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 20 * 1024 * 1024 },
+    }),
+  )
+  uploadPdf(
+    @Param('id') id: string,
+    @UploadedFile() file: any,
+    @Request() req: any,
+  ) {
+    return this.notificacionesService.uploadManualPdf(
+      id,
+      file,
       req.user.id,
       req.user.rol,
     );

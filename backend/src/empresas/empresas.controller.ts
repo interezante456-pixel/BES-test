@@ -8,6 +8,7 @@ import {
   UseGuards,
   Request,
   Patch,
+  BadRequestException,
 } from '@nestjs/common';
 import { EmpresasService } from './empresas.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -65,10 +66,28 @@ export class EmpresasController {
     return this.empresasService.update(id, updateEmpresaDto, ownerId);
   }
 
+  @Patch(':id/toggle-sunat')
+  async toggleSunat(@Param('id') id: string, @Request() req: any) {
+    if (req.user.rol !== 'SUPER_ADMIN' && req.user.rol !== 'ADMIN') {
+      throw new BadRequestException('No tienes permisos para modificar el monitoreo.');
+    }
+    return this.empresasService.toggleHabilitadoSunat(id, req.user.id);
+  }
+
+  @Patch(':id/toggle-sunafil')
+  async toggleSunafil(@Param('id') id: string, @Request() req: any) {
+    if (req.user.rol !== 'SUPER_ADMIN' && req.user.rol !== 'ADMIN') {
+      throw new BadRequestException('No tienes permisos para modificar el monitoreo.');
+    }
+    return this.empresasService.toggleHabilitadoSunafil(id, req.user.id);
+  }
+
   @Delete(':id')
   async remove(@Param('id') id: string, @Request() req: any) {
-    const ownerId = await this.getSuperAdminId(req.user.rol, req.user.id);
-    return this.empresasService.remove(id, ownerId);
+    if (req.user.rol !== 'SUPER_ADMIN' && req.user.rol !== 'ADMIN') {
+      throw new BadRequestException('Solo administradores pueden eliminar empresas del sistema.');
+    }
+    return this.empresasService.remove(id, req.user.id);
   }
 
   /** Resetea empresas atascadas en SYNCING (útil cuando Render/backend se reinicia) */

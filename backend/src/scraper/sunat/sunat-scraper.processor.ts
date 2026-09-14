@@ -43,6 +43,7 @@ export class SunatScraperProcessor extends WorkerHost {
       if (notifyUserId) {
         this.eventsGateway.emitToUser(notifyUserId, 'sync-finished', {
           empresaId,
+          portal: 'SUNAT',
           status: 'success',
         });
       }
@@ -57,6 +58,7 @@ export class SunatScraperProcessor extends WorkerHost {
       if (notifyUserId) {
         this.eventsGateway.emitToUser(notifyUserId, 'sync-error', {
           empresaId,
+          portal: 'SUNAT',
           status: 'error',
           message: error.message,
         });

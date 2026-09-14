@@ -180,12 +180,72 @@ export class EmpresasService {
     });
   }
 
-  async remove(id: string, usuarioId: string) {
-    await this.prisma.notificacion.deleteMany({ where: { empresaId: id } });
-    await this.prisma.empresaAsignacion.deleteMany({
-      where: { empresaId: id },
+  async toggleHabilitadoSunat(id: string, usuarioId: string) {
+    const empresa = await this.prisma.empresa.findUnique({ where: { id } });
+    if (!empresa) {
+      throw new BadRequestException('Empresa no encontrada');
+    }
+    const nuevoEstado = !empresa.habilitadoSunat;
+    const updated = await this.prisma.empresa.update({
+      where: { id },
+      data: { habilitadoSunat: nuevoEstado },
     });
-    return this.prisma.empresa.deleteMany({ where: { id, usuarioId } });
+
+    await this.auditService.log({
+      usuarioId,
+      accion: 'TOGGLE_MONITOREO_SUNAT',
+      entidad: 'Empresa',
+      entidadId: id,
+      detalles: { ruc: empresa.ruc, razonSocial: empresa.razonSocial, habilitadoSunat: nuevoEstado },
+    });
+
+    return updated;
+  }
+
+  async toggleHabilitadoSunafil(id: string, usuarioId: string) {
+    const empresa = await this.prisma.empresa.findUnique({ where: { id } });
+    if (!empresa) {
+      throw new BadRequestException('Empresa no encontrada');
+    }
+    const nuevoEstado = !empresa.habilitadoSunafil;
+    const updated = await this.prisma.empresa.update({
+      where: { id },
+      data: { habilitadoSunafil: nuevoEstado },
+    });
+
+    await this.auditService.log({
+      usuarioId,
+      accion: 'TOGGLE_MONITOREO_SUNAFIL',
+      entidad: 'Empresa',
+      entidadId: id,
+      detalles: { ruc: empresa.ruc, razonSocial: empresa.razonSocial, habilitadoSunafil: nuevoEstado },
+    });
+
+    return updated;
+  }
+
+  async remove(id: string, usuarioId: string) {
+    const empresa = await this.prisma.empresa.findUnique({ where: { id } });
+    if (!empresa) {
+      throw new BadRequestException('Empresa no encontrada');
+    }
+
+    await this.prisma.notificacion.deleteMany({ where: { empresaId: id } });
+    await this.prisma.empresaAsignacion.deleteMany({ where: { empresaId: id } });
+    await this.prisma.eventoCalendario.deleteMany({ where: { empresaId: id } });
+    await this.prisma.recordatorio.deleteMany({ where: { empresaId: id } });
+
+    const deleted = await this.prisma.empresa.delete({ where: { id } });
+
+    await this.auditService.log({
+      usuarioId,
+      accion: 'ELIMINAR_EMPRESA',
+      entidad: 'Empresa',
+      entidadId: id,
+      detalles: { ruc: empresa.ruc, razonSocial: empresa.razonSocial },
+    });
+
+    return deleted;
   }
 
   /**

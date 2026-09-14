@@ -79,13 +79,24 @@ export class EstadisticasService {
       }
     }
 
-    // sinLeer global: cuenta las notificaciones que nadie de la empresa ha abierto aún
-    const sinLeer = await this.prisma.notificacion.count({
-      where: {
-        empresaId: { in: empresaIds },
-        leidoGlobal: false,
-      },
-    });
+    // sinLeer por entidad (SUNAT vs SUNAFIL)
+    const [sinLeerSunat, sinLeerSunafil] = await Promise.all([
+      this.prisma.notificacion.count({
+        where: {
+          empresaId: { in: empresaIds },
+          leidoGlobal: false,
+          origen: 'SUNAT',
+        },
+      }),
+      this.prisma.notificacion.count({
+        where: {
+          empresaId: { in: empresaIds },
+          leidoGlobal: false,
+          origen: 'SUNAFIL',
+        },
+      }),
+    ]);
+    const sinLeer = sinLeerSunat;
 
     const rankingEmpresas = rankingRaw
       .map((e) => ({
@@ -169,6 +180,9 @@ export class EstadisticasService {
       empresasSunafil,
       totalNotificaciones,
       sinLeer,
+      sinLeerSunat,
+      sinLeerSunafil,
+      sinLeerTotal: sinLeerSunat + sinLeerSunafil,
       sinPdf,
       totalPeligrosas,
       totalNormales,

@@ -43,8 +43,9 @@ export function useEmpresas() {
         setSyncingEmpresas(prev => ({ ...prev, [data.empresaId]: false }));
         const emp = empresasRef.current.find(e => e.id === data.empresaId);
         const name = emp ? (emp.razonSocial || emp.ruc) : 'Empresa';
-        const portalName = data.portal === 'SUNAFIL' ? 'Casilla SUNAFIL' : 'Buzón SUNAT';
-        useSyncStore.getState().recordEmpresaSync(name, true);
+        const portalSource = data.portal === 'SUNAFIL' ? 'SUNAFIL' : 'SUNAT';
+        const portalName = portalSource === 'SUNAFIL' ? 'Casilla SUNAFIL' : 'Buzón SUNAT';
+        useSyncStore.getState().recordEmpresaSync(name, true, portalSource);
         toast.success(`Sincronización completada: ${name}`, portalName);
         fetchEmpresas();
       };
@@ -53,7 +54,8 @@ export function useEmpresas() {
         setSyncingEmpresas(prev => ({ ...prev, [data.empresaId]: false }));
         const emp = empresasRef.current.find(e => e.id === data.empresaId);
         const name = emp ? (emp.razonSocial || emp.ruc) : 'Empresa';
-        useSyncStore.getState().recordEmpresaSync(`${name} (Error)`, false);
+        const portalSource = data.portal === 'SUNAFIL' ? 'SUNAFIL' : 'SUNAT';
+        useSyncStore.getState().recordEmpresaSync(`${name} (Error)`, false, portalSource);
         toast.error(data.message || 'Error de conexión', `Error: ${name}`);
         fetchEmpresas();
       };
@@ -190,6 +192,32 @@ export function useEmpresas() {
     await fetchEmpresas();
   };
 
+  const toggleSunat = async (id: string) => {
+    try {
+      setEmpresas(prev => prev.map(e => e.id === id ? { ...e, habilitadoSunat: !e.habilitadoSunat } : e));
+      const res = await api.patch(`/empresas/${id}/toggle-sunat`);
+      const nuevo = res.data.habilitadoSunat;
+      toast.success(`Monitoreo SUNAT ${nuevo ? 'habilitado' : 'deshabilitado'}`);
+      await fetchEmpresas();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Error al actualizar monitoreo SUNAT');
+      await fetchEmpresas();
+    }
+  };
+
+  const toggleSunafil = async (id: string) => {
+    try {
+      setEmpresas(prev => prev.map(e => e.id === id ? { ...e, habilitadoSunafil: !e.habilitadoSunafil } : e));
+      const res = await api.patch(`/empresas/${id}/toggle-sunafil`);
+      const nuevo = res.data.habilitadoSunafil;
+      toast.success(`Monitoreo SUNAFIL ${nuevo ? 'habilitado' : 'deshabilitado'}`);
+      await fetchEmpresas();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Error al actualizar monitoreo SUNAFIL');
+      await fetchEmpresas();
+    }
+  };
+
   return {
     empresas,
     loading,
@@ -201,6 +229,8 @@ export function useEmpresas() {
     handleSyncAll,
     handleSyncSunafilAll,
     toggleEmpresaActivo,
+    toggleSunat,
+    toggleSunafil,
     deleteEmpresa,
     saveEmpresa,
     user

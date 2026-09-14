@@ -111,9 +111,14 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
 
           {/* Entidades Habilitadas */}
           <div className="pt-2">
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-              Entidades de Monitoreo Habilitadas
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">
+                Entidades de Monitoreo Habilitadas
+              </label>
+              <span className="text-[10px] text-amber-400/90 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                Clave SOL compartida
+              </span>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <label className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
                 habilitadoSunat

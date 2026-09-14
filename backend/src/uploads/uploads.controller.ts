@@ -14,18 +14,20 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @Controller('uploads')
 export class UploadsController {
   @UseGuards(JwtAuthGuard)
-  @Get(':filename')
-  serveFile(@Param('filename') filename: string, @Res() res: Response) {
-    // Sanitizar el nombre: solo permitir caracteres seguros para evitar path traversal
-    const safeFilename = path.basename(filename);
-    const filePath = path.join(process.cwd(), 'uploads', safeFilename);
+  @Get('*filePath')
+  serveFile(@Param('filePath') filePathParam: string, @Res() res: Response) {
+    const filename = Array.isArray(filePathParam) ? filePathParam.join('/') : filePathParam || '';
+    const uploadsRoot = path.resolve(process.cwd(), 'uploads');
+    const safePath = path.resolve(uploadsRoot, filename);
 
-    if (!fs.existsSync(filePath)) {
+    // Evitar path traversal verificando que la ruta resuelta esté dentro de uploads/
+    if (!safePath.startsWith(uploadsRoot) || !fs.existsSync(safePath)) {
       throw new NotFoundException('Archivo PDF no encontrado en el servidor');
     }
 
+    const safeFilename = path.basename(safePath);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`);
-    res.sendFile(filePath);
+    res.sendFile(safePath);
   }
 }
