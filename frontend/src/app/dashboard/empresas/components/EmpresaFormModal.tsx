@@ -67,13 +67,13 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#111827] border border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="p-6 border-b border-white/5 bg-white/[0.02]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-[#111827] border border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] my-auto">
+        <div className="p-6 border-b border-white/5 bg-white/[0.02] shrink-0">
           <h3 className="text-xl font-bold text-white">{initialData ? 'Editar Empresa' : 'Vincular Nueva Empresa'}</h3>
           <p className="text-xs text-gray-400 mt-1">Configura las credenciales y entidades donde estará activa la empresa</p>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           <div>
             <label className="block text-sm font-semibold text-gray-400 mb-1.5">RUC</label>
             <input 

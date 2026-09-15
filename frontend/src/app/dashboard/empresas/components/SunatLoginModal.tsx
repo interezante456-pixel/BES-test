@@ -118,13 +118,13 @@ export const SunatLoginModal: React.FC<SunatLoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
       <div
-        className="bg-[#111827] border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+        className="bg-[#111827] border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 border-b border-white/5 relative bg-gradient-to-b from-blue-500/10 to-transparent">
+        <div className="p-5 sm:p-6 border-b border-white/5 relative bg-gradient-to-b from-blue-500/10 to-transparent shrink-0">
           <button
             onClick={onClose}
             className="absolute right-4 top-4 p-2 text-gray-500 hover:text-white hover:bg-white/5 rounded-xl transition-all"
@@ -171,7 +171,7 @@ export const SunatLoginModal: React.FC<SunatLoginModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-3.5">
+        <div className="p-5 sm:p-6 space-y-3.5 overflow-y-auto flex-1">
           {/* Field: RUC */}
           <div className="bg-white/5 border border-white/5 rounded-2xl p-3 flex items-center justify-between gap-3">
             <div>
@@ -278,7 +278,7 @@ export const SunatLoginModal: React.FC<SunatLoginModalProps> = ({
         </div>
 
         {/* Footer Buttons */}
-        <div className="p-5 border-t border-white/5 bg-white/[0.01] flex flex-col sm:flex-row items-center gap-2.5">
+        <div className="p-4 sm:p-5 border-t border-white/5 bg-white/[0.01] flex flex-col sm:flex-row items-center gap-2.5 shrink-0">
           <button
             onClick={() => openSunatTab('normal')}
             className="w-full sm:flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3 px-4 rounded-2xl font-bold text-xs transition-all shadow-lg shadow-blue-500/20"
