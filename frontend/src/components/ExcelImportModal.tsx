@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw, FileSpreadsheet } from 'lucide-react';
 import { getVal } from '@/lib/excelUtils';
 
 interface ExcelImportModalProps {
@@ -9,6 +9,7 @@ interface ExcelImportModalProps {
   entidad: 'SUNAT' | 'SUNAFIL';
   importing: boolean;
   onConfirm: () => void;
+  onDownloadTemplate?: () => void;
 }
 
 export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
@@ -18,6 +19,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   entidad,
   importing,
   onConfirm,
+  onDownloadTemplate,
 }) => {
   if (!isOpen) return null;
 
@@ -45,20 +47,33 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
         <div className="p-6 overflow-y-auto flex-1 space-y-4">
           <div
-            className={`p-4 rounded-2xl text-xs border ${
+            className={`p-4 rounded-2xl text-xs border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
               isSunat
                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
                 : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'
             }`}
           >
-            {isSunat ? (
-              <>
-                🟢 Las columnas requeridas son: <strong>Razón Social, RUC, Usuario SOL, Clave SOL</strong>. Si el RUC ya existe, se actualizarán sus credenciales.
-              </>
-            ) : (
-              <>
-                🔵 Las empresas importadas se registrarán como activas en <strong>SUNAFIL (Casilla Electrónica)</strong>. Si alguna ya existía en SUNAT, ahora estará habilitada en ambas entidades.
-              </>
+            <div>
+              {isSunat ? (
+                <>
+                  🟢 Las columnas requeridas son: <strong>Razón Social, RUC, Usuario SOL, Clave SOL</strong>. Si el RUC ya existe, se actualizarán sus credenciales.
+                </>
+              ) : (
+                <>
+                  🔵 Las empresas importadas se registrarán como activas en <strong>SUNAFIL (Casilla Electrónica)</strong>. Si alguna ya existía en SUNAT, ahora estará habilitada en ambas entidades.
+                </>
+              )}
+            </div>
+            {onDownloadTemplate && (
+              <button
+                type="button"
+                onClick={onDownloadTemplate}
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs transition-colors border border-white/10 self-start sm:self-auto"
+                title="Descargar plantilla oficial en Excel"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                Descargar Plantilla
+              </button>
             )}
           </div>
 

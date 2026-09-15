@@ -50,3 +50,43 @@ export function exportToExcel(data: any[], sheetName: string, filenamePrefix: st
   const dateStr = new Date().toISOString().split('T')[0];
   XLSX.writeFile(wb, `${filenamePrefix}_${dateStr}.xlsx`);
 }
+
+/**
+ * Descarga una plantilla oficial en Excel (.xlsx) con columnas exactas y ejemplos.
+ */
+export function downloadEmpresasTemplate(): void {
+  const templateData = [
+    {
+      'RUC': '20601234567',
+      'Razón Social': 'EMPRESA MODELO S.A.C.',
+      'Usuario SOL': 'MODDATOS1',
+      'Clave SOL': 'ClaveSegura123',
+      'Monitoreo SUNAT': 'SI',
+      'Monitoreo SUNAFIL': 'SI',
+    },
+    {
+      'RUC': '20559876543',
+      'Razón Social': 'COMERCIAL ANDINA S.R.L.',
+      'Usuario SOL': 'USERSEC02',
+      'Clave SOL': 'Pass2026!',
+      'Monitoreo SUNAT': 'SI',
+      'Monitoreo SUNAFIL': 'NO',
+    },
+  ];
+
+  const ws = XLSX.utils.json_to_sheet(templateData);
+
+  // Anchos recomendados de columna para visualización óptima
+  ws['!cols'] = [
+    { wch: 16 }, // RUC
+    { wch: 36 }, // Razón Social
+    { wch: 18 }, // Usuario SOL
+    { wch: 18 }, // Clave SOL
+    { wch: 20 }, // Monitoreo SUNAT
+    { wch: 20 }, // Monitoreo SUNAFIL
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Plantilla_Empresas');
+  XLSX.writeFile(wb, 'Plantilla_Carga_Empresas_BES.xlsx');
+}

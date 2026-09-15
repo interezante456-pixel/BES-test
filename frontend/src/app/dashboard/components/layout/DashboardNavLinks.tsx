@@ -217,9 +217,7 @@ export const DashboardNavLinks: React.FC<DashboardNavLinksProps> = ({ user, onIt
         <div>
           <div className="flex items-center justify-between px-4 mb-2">
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">SUNAFIL (Casilla)</p>
-            <span className="text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded font-bold">
-              BETA
-            </span>
+            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
           </div>
           <div className="space-y-1">
             <Link

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { exportToExcel, readExcelFile, getVal } from '@/lib/excelUtils';
+import { exportToExcel, readExcelFile, getVal, downloadEmpresasTemplate } from '@/lib/excelUtils';
 import { toast } from '@/store/useToastStore';
 
 export function useEmpresaExcel(saveEmpresa: (id: string | null, data: any) => Promise<any>) {
@@ -7,6 +7,16 @@ export function useEmpresaExcel(saveEmpresa: (id: string | null, data: any) => P
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDownloadTemplate = () => {
+    try {
+      downloadEmpresasTemplate();
+      toast.success('Plantilla descargada correctamente. Rellena los datos y súbela con "Importar Excel".');
+    } catch (err) {
+      console.error('Error al descargar plantilla:', err);
+      toast.error('Ocurrió un error al generar la plantilla de Excel.');
+    }
+  };
 
   const handleExportExcel = (empresas: any[]) => {
     const data = empresas.map((emp) => ({
@@ -91,6 +101,7 @@ export function useEmpresaExcel(saveEmpresa: (id: string | null, data: any) => P
     importPreview,
     importing,
     fileInputRef,
+    handleDownloadTemplate,
     handleExportExcel,
     handleImportFile,
     handleExecuteImport,

@@ -12,7 +12,7 @@ interface UserFormProps {
 
 const AVAILABLE_MODULES: { key: ModuloAcceso; label: string; desc: string; badge?: string }[] = [
   { key: 'SUNAT', label: 'Módulo SUNAT', desc: 'Buzón electrónico y visor de notificaciones' },
-  { key: 'SUNAFIL', label: 'Módulo SUNAFIL', desc: 'Casilla electrónica laboral', badge: 'BETA' },
+  { key: 'SUNAFIL', label: 'Módulo SUNAFIL', desc: 'Casilla electrónica laboral' },
   { key: 'AUDITORIA', label: 'Auditoría del Sistema', desc: 'Logs de seguridad y rastreo de acciones' },
   { key: 'GESTION_EMPRESAS', label: 'Gestión de Empresas', desc: 'Crear, editar y sincronizar empresas' },
 ];

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Building2, Upload, Plus, Download } from 'lucide-react';
+import { Building2, Upload, Plus, Download, FileSpreadsheet } from 'lucide-react';
 import { useEmpresas } from './hooks/useEmpresas';
 import { useEmpresaExcel } from './hooks/useEmpresaExcel';
 import { EmpresaFormModal } from './components/EmpresaFormModal';
@@ -53,6 +53,7 @@ export default function DirectorioEmpresasPage() {
     importPreview,
     importing,
     fileInputRef,
+    handleDownloadTemplate,
     handleExportExcel,
     handleImportFile,
     handleExecuteImport,
@@ -127,6 +128,15 @@ export default function DirectorioEmpresasPage() {
 
           {canManage && (
             <>
+              <button
+                onClick={handleDownloadTemplate}
+                className="flex items-center gap-2 px-3.5 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 rounded-xl text-xs font-bold border border-emerald-500/20 transition-all shadow-sm"
+                title="Descargar plantilla Excel con el formato oficial para rellenar"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                Descargar Plantilla
+              </button>
+
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-2 px-3.5 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-xl text-xs font-bold border border-white/5 transition-all shadow-sm"
@@ -268,6 +278,7 @@ export default function DirectorioEmpresasPage() {
         entidad="SUNAT"
         importing={importing}
         onConfirm={handleExecuteImport}
+        onDownloadTemplate={handleDownloadTemplate}
       />
     </div>
   );
