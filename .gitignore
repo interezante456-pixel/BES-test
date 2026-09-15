@@ -37,6 +37,7 @@ redis_data/
 # Generator scripts & presentation PDFs
 generate_pdf.js
 generate_documentation_pdf.js
+generate_reporte_dueno_pdf.js
 Resumen_Exposicion_BES.pdf
 *.pdf
 
