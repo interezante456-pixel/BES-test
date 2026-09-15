@@ -20,7 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "check:encryption": "ts-node check-fallback-key.ts",
     "migrate:encryption": "ts-node migrate-encryption.ts",
-    "migrate:encryption:dry": "ts-node migrate-encryption.ts --dry-run"
+    "migrate:encryption:dry": "ts-node migrate-encryption.ts --dry-run",
+    "setup:roles": "ts-node setup-roles.ts"
   },
   "dependencies": {
     "@hapi/joi": "^17.1.1",
