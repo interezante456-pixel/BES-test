@@ -86,24 +86,31 @@ export class CronService implements OnModuleInit {
     return config;
   }
 
-  async updateScheduleConfig(data: ScheduleConfigDto) {
-    // Normalizar y validar horas
+  private normalizarHorasYDias(horas?: string[], diasSemana?: number[]) {
     const horasLimpias = Array.from(
       new Set(
-        (data.horas || [])
+        (horas || [])
           .map((h) => h.trim())
           .filter((h) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(h)),
       ),
     ).sort((a, b) => a.localeCompare(b));
 
-    // Normalizar días (0 a 6)
     const diasLimpios = Array.from(
       new Set(
-        (data.diasSemana || []).filter(
+        (diasSemana || []).filter(
           (d) => Number.isInteger(d) && d >= 0 && d <= 6,
         ),
       ),
     ).sort((a, b) => a - b);
+
+    return { horasLimpias, diasLimpios };
+  }
+
+  async updateScheduleConfig(data: ScheduleConfigDto) {
+    const { horasLimpias, diasLimpios } = this.normalizarHorasYDias(
+      data.horas,
+      data.diasSemana,
+    );
 
     const updated = await this.prisma.configuracionSistema.upsert({
       where: { id: 'default' },
@@ -275,21 +282,10 @@ export class CronService implements OnModuleInit {
   }
 
   async updateSunafilScheduleConfig(data: SunafilScheduleConfigDto) {
-    const horasLimpias = Array.from(
-      new Set(
-        (data.horas || [])
-          .map((h) => h.trim())
-          .filter((h) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(h)),
-      ),
-    ).sort((a, b) => a.localeCompare(b));
-
-    const diasLimpios = Array.from(
-      new Set(
-        (data.diasSemana || []).filter(
-          (d) => Number.isInteger(d) && d >= 0 && d <= 6,
-        ),
-      ),
-    ).sort((a, b) => a - b);
+    const { horasLimpias, diasLimpios } = this.normalizarHorasYDias(
+      data.horas,
+      data.diasSemana,
+    );
 
     const updated = await this.prisma.configuracionSunafilSistema.upsert({
       where: { id: 'default' },
