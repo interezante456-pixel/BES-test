@@ -4,8 +4,8 @@ ALTER TABLE "Usuario" ADD COLUMN IF NOT EXISTS "apellidos" TEXT NOT NULL DEFAULT
 ALTER TABLE "Usuario" ADD COLUMN IF NOT EXISTS "dni" TEXT NOT NULL DEFAULT '';
 
 -- Populate default names if updating existing rows
-UPDATE "Usuario" SET "nombres" = "nombre" WHERE "nombres" = '' AND "nombre" IS NOT NULL;
-UPDATE "Usuario" SET "dni" = "id" WHERE "dni" = '';
+UPDATE "Usuario" SET "nombres" = "nombre" WHERE length("nombres") = 0 AND "nombre" IS NOT NULL;
+UPDATE "Usuario" SET "dni" = "id" WHERE length("dni") = 0;
 
 -- Drop old column if exists
 ALTER TABLE "Usuario" DROP COLUMN IF EXISTS "nombre";
