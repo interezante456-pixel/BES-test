@@ -7,10 +7,9 @@ RUN npm ci --ignore-scripts
 
 COPY src ./src
 COPY public ./public
-COPY next.config.* ./
+COPY next.config.ts ./
+COPY postcss.config.mjs ./
 COPY tsconfig.json ./
-COPY postcss.config.* ./
-COPY tailwind.config.* ./
 
 # Argumento de compilación para inyectar la URL del backend en la build estática de Next.js
 ARG NEXT_PUBLIC_API_URL
