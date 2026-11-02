@@ -8,18 +8,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
 
-  // A3: Configuración de CORS dinámica para permitir localhost, dominios y redes locales con cualquier puerto
+  // A3: Configuración de CORS segura con whitelist anclada (evita orígenes maliciosos arbitrarios)
+  const allowedOriginRegex =
+    /^https?:\/\/(localhost|127\.0\.0\.1|([a-zA-Z0-9-]+\.)*(oracon\.com|bes\.com)|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/;
+
   app.enableCors({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
       // Permitir peticiones del mismo servidor (sin header origin) o desde dominios/IPs autorizadas
-      if (
-        !origin ||
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1') ||
-        origin.includes('oracon.com') ||
-        origin.includes('bes.com') ||
-        /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin)
-      ) {
+      if (!origin || allowedOriginRegex.test(origin)) {
         callback(null, true);
       } else {
         // A5: Rechazar orígenes no autorizados explícitamente

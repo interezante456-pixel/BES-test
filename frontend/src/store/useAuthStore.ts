@@ -11,33 +11,52 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
+const getStoredToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem('token') || localStorage.getItem('token');
+};
+
+const getStoredUser = (): User | null => {
+  if (typeof window === 'undefined') return null;
+  const raw = sessionStorage.getItem('user') || localStorage.getItem('user');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
-  // Token solo en memoria — NO en localStorage (vulnerable a XSS)
-  // La cookie httpOnly lo gestiona automáticamente para las peticiones al backend
-  token: typeof window !== 'undefined' ? sessionStorage.getItem('token') : null,
-  isAuthenticated: typeof window !== 'undefined' ? !!sessionStorage.getItem('token') : false,
-  user: typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('user') || 'null') : null,
+  token: getStoredToken(),
+  isAuthenticated: typeof window !== 'undefined' ? !!getStoredToken() : false,
+  user: getStoredUser(),
+
   setAuth: (token, user) => {
-    // Guardar en sessionStorage (se limpia al cerrar el tab, más seguro que localStorage)
+    // Sincronizar en ambos almacenamientos para persistencia tras F5 y compatibilidad con Axios
     sessionStorage.setItem('token', token);
     sessionStorage.setItem('user', JSON.stringify(user));
-    // Limpiar cualquier token residual en localStorage
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
     set({ token, isAuthenticated: true, user });
   },
+
   setUser: (user) => {
     sessionStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('user', JSON.stringify(user));
     set({ user });
   },
+
   updateUser: (partial) => {
     set((state) => {
       if (!state.user) return state;
       const updatedUser = { ...state.user, ...partial };
       sessionStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('user', JSON.stringify(updatedUser));
       return { user: updatedUser };
     });
   },
+
   logout: async () => {
     // Limpiar la cookie httpOnly desde el servidor
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
@@ -48,5 +67,3 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ token: null, isAuthenticated: false, user: null });
   },
 }));
-
-

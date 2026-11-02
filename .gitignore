@@ -44,3 +44,20 @@ Resumen_Exposicion_BES.pdf
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Katalon Studio & QA Test Automation
+katalon/
+.katalon/
+docs-qa/
+*katalon*
+*.prj
+
+# Agent & AI assistant artifacts
+.agents/
+.claude/
+mcp_config.json
+
+# Archives & Large files
+*.tar
+*.tar.gz
+*.zip

@@ -13,14 +13,23 @@
   "host_permissions": [
     "https://*.sunat.gob.pe/*",
     "http://*.sunat.gob.pe/*",
-    "<all_urls>"
+    "https://casillaelectronica.sunafil.gob.pe/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://*.oracon.com/*",
+        "http://*.oracon.com/*",
+        "https://*.bes.com/*",
+        "http://*.bes.com/*",
+        "http://192.168.*/*",
+        "http://10.*/*"
+      ],
       "js": ["content-bes.js"]
     },
     {

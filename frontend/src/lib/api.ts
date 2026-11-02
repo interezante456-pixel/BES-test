@@ -37,7 +37,7 @@ const api = axios.create({
 // Interceptor: añadir el token JWT como Bearer en cada petición al backend
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

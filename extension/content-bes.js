@@ -2,20 +2,23 @@
 
 // 1. Notificar a la web que la extensión está instalada
 function notifyExtensionReady() {
-  window.postMessage({ type: 'BES_EXTENSION_INSTALLED', version: '1.1.0' }, '*');
+  window.postMessage({ type: 'BES_EXTENSION_INSTALLED', version: '1.1.0' }, window.location.origin);
 }
 
 notifyExtensionReady();
 
 // 2. Escuchar mensajes provenientes de la web BES
 window.addEventListener('message', (event) => {
+  // Validar origen: rechazar mensajes provenientes de frames u orígenes externos
+  if (event.origin !== window.location.origin) return;
+
   if (event.data && event.data.type === 'BES_CHECK_EXTENSION') {
     notifyExtensionReady();
   }
 
   // Escuchar cuando el usuario hace clic en "Abrir en Pestaña" o "Abrir en Incógnito"
   if (event.data && event.data.type === 'BES_FILL_SUNAT') {
-    const { ruc, usuarioSol, claveSol, url } = event.data.data || {};
+    const { ruc, usuarioSol, claveSol, url } = event.data.data || event.data.credentials || {};
     const incognito = Boolean(event.data.incognito);
 
     if (ruc) {
@@ -34,7 +37,7 @@ window.addEventListener('message', (event) => {
           type: 'BES_SUNAT_OPENED',
           incognito: incognito,
           success: !chrome.runtime.lastError,
-        }, '*');
+        }, window.location.origin);
 
         if (chrome.runtime.lastError) {
           console.warn('[BES Extension] Guardando localmente en storage como fallback:', chrome.runtime.lastError);

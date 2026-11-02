@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma.service';
 import { JwtService } from '@nestjs/jwt';
+import { AuditService } from '../audit/audit.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -15,6 +16,7 @@ describe('AuthService', () => {
           useValue: {
             usuario: {
               findUnique: jest.fn(),
+              findFirst: jest.fn(),
               create: jest.fn(),
             },
           },
@@ -23,6 +25,13 @@ describe('AuthService', () => {
           provide: JwtService,
           useValue: {
             sign: jest.fn(),
+            signAsync: jest.fn().mockResolvedValue('mock-token'),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            log: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

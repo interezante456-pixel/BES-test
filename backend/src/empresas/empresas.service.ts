@@ -112,18 +112,11 @@ export class EmpresasService {
         orderBy: { razonSocial: 'asc' },
       });
 
-      return empresas.map((emp: any) => {
-        let claveSolDecrypted = '';
-        try {
-          claveSolDecrypted = this.encryptionService.decrypt(emp.claveSol);
-        } catch (e) {
-          claveSolDecrypted = '[Error al desencriptar]';
-        }
-        return {
-          ...emp,
-          claveSol: claveSolDecrypted,
-        };
-      });
+      // Seguridad: Enmascarar la clave SOL en listados generales para evitar exposición masiva
+      return empresas.map((emp: any) => ({
+        ...emp,
+        claveSol: '••••••••',
+      }));
     }
 
     // Usuarios secundarios: solo ven sus empresas asignadas

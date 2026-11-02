@@ -26,13 +26,14 @@ dotenv.config();
 // Configuración
 // ─────────────────────────────────────────────
 const CURRENT_KEY = process.env.ENCRYPTION_KEY || '';
-const FALLBACK_KEY = process.env.ENCRYPTION_KEY_LEGACY || '12345678901234567890123456789012';
+const FALLBACK_KEY = process.env.ENCRYPTION_KEY_LEGACY || '';
 const DRY_RUN = process.argv.includes('--dry-run');
 
 // ─────────────────────────────────────────────
 // Helpers de cifrado
 // ─────────────────────────────────────────────
 function tryDecrypt(hash: string, key: string): string | null {
+  if (!key) return null;
   try {
     const [ivHex, encryptedHex] = hash.split(':');
     if (!ivHex || !encryptedHex) return null;
@@ -62,6 +63,12 @@ async function main() {
   if (!CURRENT_KEY || CURRENT_KEY.length !== 32) {
     console.error('\n❌ ERROR: ENCRYPTION_KEY no está definida o no tiene 32 caracteres.');
     console.error('   Asegúrate de tener el .env cargado o de pasar DATABASE_URL y ENCRYPTION_KEY como variables de entorno.\n');
+    process.exit(1);
+  }
+
+  if (!FALLBACK_KEY || FALLBACK_KEY.length !== 32) {
+    console.error('\n❌ ERROR: ENCRYPTION_KEY_LEGACY debe estar definida en el entorno con exactamente 32 caracteres.');
+    console.error('   Define la clave anterior en .env como ENCRYPTION_KEY_LEGACY="<clave_anterior>" para migrar los registros.\n');
     process.exit(1);
   }
 

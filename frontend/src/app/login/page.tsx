@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Mail, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
@@ -15,18 +15,36 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [isAuthenticated, router]);
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Extraer valores desde el formulario DOM (compatible con Katalon Recorder, autofill y extensiones) con fallback al state
+    const form = e.currentTarget;
+    const emailEl = (form.elements.namedItem('email') as HTMLInputElement | null) || (form.querySelector('input[type="email"]') as HTMLInputElement | null);
+    const passwordEl = (form.elements.namedItem('password') as HTMLInputElement | null) || (form.querySelector('input[type="password"], input[name="password"]') as HTMLInputElement | null);
+
+    const submittedEmail = (emailEl?.value || email || '').trim();
+    const submittedPassword = passwordEl?.value || password || '';
+
+    if (submittedEmail && submittedEmail !== email) setEmail(submittedEmail);
+    if (submittedPassword && submittedPassword !== password) setPassword(submittedPassword);
     
     try {
       // Route Handler de Next.js → llama al backend y setea cookie httpOnly
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: submittedEmail, password: submittedPassword }),
       });
 
       const data = await response.json();
@@ -37,7 +55,10 @@ export default function LoginPage() {
       }
 
       if (!response.ok) {
-        setError(data.message || 'Error al iniciar sesión');
+        const errorMsg = Array.isArray(data.message)
+          ? data.message.join('. ')
+          : (data.message || 'Error al iniciar sesión');
+        setError(errorMsg);
         return;
       }
 
@@ -71,15 +92,19 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2">Correo Electrónico</label>
+            <label htmlFor="email" className="block text-sm font-semibold text-gray-300 mb-2">Correo Electrónico</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Mail className="h-5 w-5 text-gray-500" />
               </div>
               <input
+                id="email"
+                name="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onInput={(e) => setEmail(e.currentTarget.value)}
+                autoComplete="email"
                 required
                 className="block w-full pl-12 pr-4 py-3.5 bg-[#1f2937]/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200 outline-none"
                 placeholder="admin@oracon.com"
@@ -88,15 +113,19 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2">Contraseña</label>
+            <label htmlFor="password" className="block text-sm font-semibold text-gray-300 mb-2">Contraseña</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-gray-500" />
               </div>
               <input
+                id="password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onInput={(e) => setPassword(e.currentTarget.value)}
+                autoComplete="current-password"
                 required
                 className="block w-full pl-12 pr-12 py-3.5 bg-[#1f2937]/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200 outline-none"
                 placeholder="••••••••"

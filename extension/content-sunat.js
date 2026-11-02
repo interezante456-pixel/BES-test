@@ -156,9 +156,13 @@ function showSunatBanner(ruc) {
     gap: 10px;
     transition: opacity 0.4s ease;
   `;
-  banner.innerHTML = `
-    <span>✅ BES autocompletó las credenciales del RUC <strong>${ruc}</strong>.</span>
-  `;
+  const span = document.createElement('span');
+  span.textContent = '✅ BES autocompletó las credenciales del RUC ';
+  const strong = document.createElement('strong');
+  strong.textContent = String(ruc || '');
+  span.appendChild(strong);
+  span.appendChild(document.createTextNode('.'));
+  banner.appendChild(span);
   document.body.appendChild(banner);
   setTimeout(() => {
     banner.style.opacity = '0';

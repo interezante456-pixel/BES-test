@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import { useEmpresas } from '../../empresas/hooks/useEmpresas';
 import { SunafilLoginModal } from '../../empresas/components/SunafilLoginModal';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -22,12 +23,13 @@ export default function SunafilEmpresasPage() {
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
       if (event.data && event.data.type === 'BES_EXTENSION_INSTALLED') {
         setExtensionInstalled(true);
       }
     };
     window.addEventListener('message', handleMessage);
-    window.postMessage({ type: 'BES_CHECK_EXTENSION' }, '*');
+    window.postMessage({ type: 'BES_CHECK_EXTENSION' }, window.location.origin);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
@@ -54,11 +56,21 @@ export default function SunafilEmpresasPage() {
     setIsDetailsModalOpen(true);
   };
 
-  const handleOpenCasilla = (empresa: any) => {
+  const handleOpenCasilla = async (empresa: any) => {
     if (extensionInstalled) {
+      let clave = empresa.claveSol;
+      let targetUrl = sunafilOAuthUrl;
+      try {
+        const res = await api.post(`/scraper/open-portal/${empresa.id}`, { portal: 'SUNAFIL' });
+        if (res.data?.claveSol) clave = res.data.claveSol;
+        if (res.data?.url) targetUrl = res.data.url;
+      } catch (e) {
+        console.warn('[SunafilEmpresasPage] Error obteniendo credenciales on-demand:', e);
+      }
+
       window.postMessage(
-        { type: 'BES_FILL_SUNAT', incognito: false, credentials: { ruc: empresa.ruc, usuario: empresa.usuarioSol, clave: empresa.claveSol, portal: 'SUNAFIL', portalUrl: sunafilOAuthUrl } },
-        '*',
+        { type: 'BES_FILL_SUNAT', incognito: false, data: { ruc: empresa.ruc, usuarioSol: empresa.usuarioSol, claveSol: clave, url: targetUrl } },
+        window.location.origin,
       );
     } else {
       handleOpenDetails(empresa);

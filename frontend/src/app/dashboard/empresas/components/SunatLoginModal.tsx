@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import {
   X,
   Copy,
@@ -31,6 +32,7 @@ export const SunatLoginModal: React.FC<SunatLoginModalProps> = ({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [extensionInstalled, setExtensionInstalled] = useState(false);
+  const [loadingCredentials, setLoadingCredentials] = useState(false);
   const [actionStatus, setActionStatus] = useState<{
     type: 'success' | 'warning' | 'info';
     message: string;
@@ -41,6 +43,7 @@ export const SunatLoginModal: React.FC<SunatLoginModalProps> = ({
     if (!isOpen) return;
 
     const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
       if (event.data && event.data.type === 'BES_EXTENSION_INSTALLED') {
         setExtensionInstalled(true);
       }
@@ -61,8 +64,8 @@ export const SunatLoginModal: React.FC<SunatLoginModalProps> = ({
 
     window.addEventListener('message', handleMessage);
 
-    // Consultar presencia de la extensión
-    window.postMessage({ type: 'BES_CHECK_EXTENSION' }, '*');
+    // Consultar presencia de la extensión de forma segura hacia el origen local
+    window.postMessage({ type: 'BES_CHECK_EXTENSION' }, window.location.origin);
 
     return () => {
       window.removeEventListener('message', handleMessage);
@@ -78,11 +81,30 @@ export const SunatLoginModal: React.FC<SunatLoginModalProps> = ({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const openSunatTab = (mode: 'normal' | 'incognito' = 'normal') => {
+  const openSunatTab = async (mode: 'normal' | 'incognito' = 'normal') => {
     const isIncognito = mode === 'incognito';
     setActionStatus(null);
+    setLoadingCredentials(true);
 
-    // 1. Notificar a la extensión BES Auto-Fill
+    let clave = empresa.claveSol;
+    let targetUrl = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm';
+
+    // Obtener credencial fresca y desencriptada de forma segura bajo demanda
+    try {
+      const res = await api.post(`/scraper/open-portal/${empresa.id}`, { portal: 'SUNAT' });
+      if (res.data?.claveSol) {
+        clave = res.data.claveSol;
+      }
+      if (res.data?.url) {
+        targetUrl = res.data.url;
+      }
+    } catch (err) {
+      console.warn('[SunatLoginModal] No se pudieron obtener credenciales on-demand:', err);
+    } finally {
+      setLoadingCredentials(false);
+    }
+
+    // 1. Notificar a la extensión BES Auto-Fill asegurando el origin
     window.postMessage(
       {
         type: 'BES_FILL_SUNAT',
@@ -90,15 +112,14 @@ export const SunatLoginModal: React.FC<SunatLoginModalProps> = ({
         data: {
           ruc: empresa.ruc,
           usuarioSol: empresa.usuarioSol,
-          claveSol: empresa.claveSol,
+          claveSol: clave,
+          url: targetUrl,
         },
       },
-      '*',
+      window.location.origin,
     );
 
-    const sunatUrl = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm';
-
-    // 2. Si la extensión no está instalada o no responde en 300ms, hacer fallback
+    // 2. Si la extensión no está instalada o no responde, hacer fallback
     if (!extensionInstalled) {
       if (isIncognito) {
         setActionStatus({
@@ -107,12 +128,12 @@ export const SunatLoginModal: React.FC<SunatLoginModalProps> = ({
             '⚠️ Para abrir en Incógnito real: En tu navegador ve a extensions (brave://extensions o chrome://extensions), pulsa 🔄 Recargar y activa "Permitir en modo incógnito".',
         });
         window.open(
-          sunatUrl,
+          targetUrl,
           `sunat_incognito_${empresa.ruc}`,
           'width=1280,height=850,menubar=no,status=no,toolbar=no',
         );
       } else {
-        window.open(sunatUrl, '_blank', 'noopener,noreferrer');
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
       }
     }
   };

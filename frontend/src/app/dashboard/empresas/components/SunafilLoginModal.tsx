@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import {
   X,
   Copy,
@@ -38,6 +39,7 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [extensionInstalled, setExtensionInstalled] = useState(false);
+  const [loadingCredentials, setLoadingCredentials] = useState(false);
   const [actionStatus, setActionStatus] = useState<{
     type: 'success' | 'warning' | 'info';
     message: string;
@@ -51,6 +53,7 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
     if (!isOpen) return;
 
     const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
       if (event.data && event.data.type === 'BES_EXTENSION_INSTALLED') {
         setExtensionInstalled(true);
       }
@@ -71,8 +74,8 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
 
     window.addEventListener('message', handleMessage);
 
-    // Consultar presencia de la extensión
-    window.postMessage({ type: 'BES_CHECK_EXTENSION' }, '*');
+    // Consultar presencia de la extensión hacia el origen local
+    window.postMessage({ type: 'BES_CHECK_EXTENSION' }, window.location.origin);
 
     return () => {
       window.removeEventListener('message', handleMessage);
@@ -88,11 +91,30 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const openSunafilTab = (mode: 'normal' | 'incognito' = 'normal') => {
+  const openSunafilTab = async (mode: 'normal' | 'incognito' = 'normal') => {
     const isIncognito = mode === 'incognito';
     setActionStatus(null);
+    setLoadingCredentials(true);
 
-    // 1. Notificar a la extensión BES Auto-Fill
+    let clave = empresa.claveSol;
+    let targetUrl = sunafilOAuthUrl;
+
+    // Obtener credenciales frescas y desencriptadas on-demand de forma segura
+    try {
+      const res = await api.post(`/scraper/open-portal/${empresa.id}`, { portal: 'SUNAFIL' });
+      if (res.data?.claveSol) {
+        clave = res.data.claveSol;
+      }
+      if (res.data?.url) {
+        targetUrl = res.data.url;
+      }
+    } catch (err) {
+      console.warn('[SunafilLoginModal] No se pudieron obtener credenciales on-demand:', err);
+    } finally {
+      setLoadingCredentials(false);
+    }
+
+    // 1. Notificar a la extensión BES Auto-Fill asegurando el targetOrigin
     window.postMessage(
       {
         type: 'BES_FILL_SUNAT',
@@ -100,11 +122,11 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
         data: {
           ruc: empresa.ruc,
           usuarioSol: empresa.usuarioSol,
-          claveSol: empresa.claveSol,
-          url: sunafilOAuthUrl,
+          claveSol: clave,
+          url: targetUrl,
         },
       },
-      '*',
+      window.location.origin,
     );
 
     // 2. Si la extensión no está instalada, hacer fallback
@@ -116,12 +138,12 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
             '⚠️ Para autocompletar automáticamente instala la extensión BES desde chrome://extensions o copia las credenciales con los botones de abajo.',
         });
         window.open(
-          sunafilOAuthUrl,
+          targetUrl,
           `sunafil_incognito_${empresa.ruc}`,
           'width=1280,height=850,menubar=no,status=no,toolbar=no',
         );
       } else {
-        window.open(sunafilOAuthUrl, '_blank', 'noopener,noreferrer');
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
       }
     }
   };

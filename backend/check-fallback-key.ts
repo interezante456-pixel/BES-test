@@ -5,9 +5,10 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const CURRENT_KEY = process.env.ENCRYPTION_KEY || '';
-const FALLBACK_KEY = process.env.ENCRYPTION_KEY_LEGACY || '12345678901234567890123456789012';
+const FALLBACK_KEY = process.env.ENCRYPTION_KEY_LEGACY || '';
 
 function tryDecrypt(hash: string, key: string): string | null {
+  if (!key) return null;
   try {
     const [ivHex, encryptedHex] = hash.split(':');
     if (!ivHex || !encryptedHex) return null;
@@ -25,8 +26,8 @@ async function main() {
   const prisma = new PrismaClient();
 
   console.log('\n🔍 Diagnóstico de cifrado — campo claveSol en Empresa\n');
-  console.log(`  ENCRYPTION_KEY actual : ${CURRENT_KEY.substring(0, 8)}...`);
-  console.log(`  FALLBACK_KEY          : ${FALLBACK_KEY.substring(0, 8)}...\n`);
+  console.log(`  ENCRYPTION_KEY actual : ${CURRENT_KEY ? `${CURRENT_KEY.substring(0, 8)}...` : '(no configurada)'}`);
+  console.log(`  FALLBACK_KEY (legada) : ${FALLBACK_KEY ? `${FALLBACK_KEY.substring(0, 8)}...` : '(no configurada en .env)'}\n`);
 
   const empresas = await prisma.empresa.findMany({
     select: { id: true, ruc: true, razonSocial: true, claveSol: true },
