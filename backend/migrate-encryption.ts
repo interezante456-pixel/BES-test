@@ -38,7 +38,8 @@ function tryDecrypt(hash: string, key: string): string | null {
     const [ivHex, encryptedHex] = hash.split(':');
     if (!ivHex || !encryptedHex) return null;
     const iv = Buffer.from(ivHex, 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(key), iv);
+    const algo = 'aes-256-cbc';
+    const decipher = crypto.createDecipheriv(algo, Buffer.from(key), iv);
     let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
@@ -49,7 +50,8 @@ function tryDecrypt(hash: string, key: string): string | null {
 
 function encrypt(text: string, key: string): string {
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(key), iv);
+  const algo = 'aes-256-cbc';
+  const cipher = crypto.createCipheriv(algo, Buffer.from(key), iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   return `${iv.toString('hex')}:${encrypted}`;
@@ -84,7 +86,7 @@ async function main() {
   console.log('  MIGRACIÓN DE CIFRADO — claveSol');
   console.log('═'.repeat(60));
   console.log(`  Modo           : ${DRY_RUN ? '🔍 DRY-RUN (solo lectura, sin cambios)' : '🚀 REAL (aplicará cambios en la DB)'}`);
-  console.log(`  DATABASE_URL   : ${(process.env.DATABASE_URL || '').replace(/:[^:@]+@/, ':***@')}`);
+  console.log(`  DATABASE_URL   : ${process.env.DATABASE_URL ? '[CONFIGURADA]' : '[NO DEFINIDA]'}`);
   console.log(`  ENCRYPTION_KEY : ${CURRENT_KEY.substring(0, 8)}...`);
   console.log(`  FALLBACK_KEY   : ${FALLBACK_KEY.substring(0, 8)}...`);
   console.log('═'.repeat(60) + '\n');

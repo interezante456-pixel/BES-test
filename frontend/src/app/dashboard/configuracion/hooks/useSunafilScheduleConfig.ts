@@ -37,7 +37,7 @@ export function useSunafilScheduleConfig(isAdmin: boolean) {
         setDiasSeleccionados(dias);
         setHorasProgramadas(horas);
         setSoloActivas(solo);
-        setLastSaved({ sincroActiva: activa, dias: [...dias].sort((a,b)=>a-b), horas: [...horas].sort(), soloActivas: solo, updatedAt: res.data.updatedAt });
+        setLastSaved({ sincroActiva: activa, dias: [...dias].sort((a,b)=>a-b), horas: [...horas].sort((a, b) => a.localeCompare(b)), soloActivas: solo, updatedAt: res.data.updatedAt });
       }
     } catch (err: any) {
       setScheduleError('No se pudo cargar la configuracion SUNAFIL.');
@@ -53,7 +53,7 @@ export function useSunafilScheduleConfig(isAdmin: boolean) {
       sincroActiva !== lastSaved.sincroActiva ||
       soloActivas !== lastSaved.soloActivas ||
       JSON.stringify([...diasSeleccionados].sort((a,b)=>a-b)) !== JSON.stringify(lastSaved.dias) ||
-      JSON.stringify([...horasProgramadas].sort()) !== JSON.stringify(lastSaved.horas)
+      JSON.stringify([...horasProgramadas].sort((a, b) => a.localeCompare(b))) !== JSON.stringify(lastSaved.horas)
     )
   );
 
@@ -69,7 +69,7 @@ export function useSunafilScheduleConfig(isAdmin: boolean) {
   const handleAddHora = () => {
     if (!nuevaHora) return;
     if (horasProgramadas.includes(nuevaHora)) { toast.warning('Esta hora ya esta en la lista.', 'Horarios SUNAFIL'); return; }
-    setHorasProgramadas([...horasProgramadas, nuevaHora].sort());
+    setHorasProgramadas([...horasProgramadas, nuevaHora].sort((a, b) => a.localeCompare(b)));
   };
 
   const handleRemoveHora = (h: string) => {
@@ -85,7 +85,7 @@ export function useSunafilScheduleConfig(isAdmin: boolean) {
       if (res.data) {
         const { sincroAutomaticaActiva: activa, diasSemana: dias, horas, soloActivas: solo } = res.data;
         setSincroActiva(activa); setDiasSeleccionados(dias); setHorasProgramadas(horas); setSoloActivas(solo);
-        setLastSaved({ sincroActiva: activa, dias: [...dias].sort((a,b)=>a-b), horas: [...horas].sort(), soloActivas: solo, updatedAt: new Date().toISOString() });
+        setLastSaved({ sincroActiva: activa, dias: [...dias].sort((a,b)=>a-b), horas: [...horas].sort((a, b) => a.localeCompare(b)), soloActivas: solo, updatedAt: new Date().toISOString() });
       }
       const nombresDias = diasSeleccionados.map(k => DIAS_MAP.find(d => d.key === k)?.label).filter(Boolean).join(', ');
       setScheduleSuccess(`Programacion SUNAFIL guardada. Dias: [${nombresDias}] a las [${horasProgramadas.map(formatHora12).join(', ')}]. ${soloActivas ? 'Solo activas.' : 'Re-escaneo completo.'}`);

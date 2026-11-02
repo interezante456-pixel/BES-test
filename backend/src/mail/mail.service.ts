@@ -10,7 +10,7 @@ export class MailService {
     this.initMail();
   }
 
-  private async initMail() {
+  private initMail() {
     const host = process.env.MAIL_HOST;
     const port = process.env.MAIL_PORT;
     const user = process.env.MAIL_USER;
@@ -35,7 +35,7 @@ export class MailService {
     }
   }
 
-  private async initEthereal() {
+  private initEthereal() {
     // Cuenta de prueba Ethereal generada automáticamente para desarrollo
     nodemailer.createTestAccount((err, account) => {
       if (err) {

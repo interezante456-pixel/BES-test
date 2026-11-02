@@ -127,7 +127,7 @@ export default function SunatEmpresasPage() {
         confirmVariant="sync"
         onConfirm={() => {
           setIsSyncConfirmOpen(false);
-          handleSyncAll();
+          void handleSyncAll();
         }}
         onClose={() => setIsSyncConfirmOpen(false)}
       />

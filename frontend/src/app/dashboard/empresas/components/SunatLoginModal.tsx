@@ -76,7 +76,7 @@ export const SunatLoginModal: React.FC<SunatLoginModalProps> = ({
 
   const handleCopy = (text: string, fieldName: string) => {
     if (!text) return;
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text);
     setCopiedField(fieldName);
     setTimeout(() => setCopiedField(null), 2000);
   };

@@ -86,7 +86,7 @@ export const SunafilLoginModal: React.FC<SunafilLoginModalProps> = ({
 
   const handleCopy = (text: string, fieldName: string) => {
     if (!text) return;
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text);
     setCopiedField(fieldName);
     setTimeout(() => setCopiedField(null), 2000);
   };

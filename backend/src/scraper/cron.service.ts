@@ -94,7 +94,7 @@ export class CronService implements OnModuleInit {
           .map((h) => h.trim())
           .filter((h) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(h)),
       ),
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b));
 
     // Normalizar días (0 a 6)
     const diasLimpios = Array.from(
@@ -168,7 +168,9 @@ export class CronService implements OnModuleInit {
             this.logger.log(
               `⏰ Ejecutando sincronización automática programada [${jobName}] (${horaStr} - Días: ${diasCron})`,
             );
-            this.handleDailyScraping();
+            void this.handleDailyScraping().catch((err: Error) =>
+              this.logger.error(`Error en cron [${jobName}]: ${err.message}`),
+            );
           },
           null,
           false,
@@ -279,7 +281,7 @@ export class CronService implements OnModuleInit {
           .map((h) => h.trim())
           .filter((h) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(h)),
       ),
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b));
 
     const diasLimpios = Array.from(
       new Set(
@@ -345,7 +347,10 @@ export class CronService implements OnModuleInit {
             this.logger.log(
               `⏰ Ejecutando sincronización SUNAFIL programada [${jobName}] (${horaStr})`,
             );
-            this.handleDailySunafilScraping(config.soloActivas);
+            void this.handleDailySunafilScraping(config.soloActivas).catch(
+              (err: Error) =>
+                this.logger.error(`Error en cron SUNAFIL [${jobName}]: ${err.message}`),
+            );
           },
           null,
           false,

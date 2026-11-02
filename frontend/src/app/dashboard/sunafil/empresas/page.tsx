@@ -139,7 +139,7 @@ export default function SunafilEmpresasPage() {
         confirmText="Sí, Sincronizar Todo"
         cancelText="No, Cancelar"
         confirmVariant="sync"
-        onConfirm={() => { setIsSyncConfirmOpen(false); handleSyncSunafilAll(); }}
+        onConfirm={() => { setIsSyncConfirmOpen(false); void handleSyncSunafilAll(); }}
         onClose={() => setIsSyncConfirmOpen(false)}
       />
     </div>
