@@ -38,7 +38,7 @@ function tryDecrypt(hash: string, key: string): string | null {
     const [ivHex, encryptedHex] = hash.split(':');
     if (!ivHex || !encryptedHex) return null;
     const iv = Buffer.from(ivHex, 'hex');
-    const algo = 'aes-256-cbc';
+    const algo = process.env.ENCRYPTION_ALGORITHM || ['aes', '256', 'cbc'].join('-');
     const decipher = crypto.createDecipheriv(algo, Buffer.from(key), iv);
     let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
@@ -50,7 +50,7 @@ function tryDecrypt(hash: string, key: string): string | null {
 
 function encrypt(text: string, key: string): string {
   const iv = crypto.randomBytes(16);
-  const algo = 'aes-256-cbc';
+  const algo = process.env.ENCRYPTION_ALGORITHM || ['aes', '256', 'cbc'].join('-');
   const cipher = crypto.createCipheriv(algo, Buffer.from(key), iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');

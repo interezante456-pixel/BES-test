@@ -9,7 +9,7 @@ const IV_LENGTH = 16;
 
 function encrypt(text: string) {
   const iv = crypto.randomBytes(IV_LENGTH);
-  const algo = 'aes-256-cbc';
+  const algo = process.env.ENCRYPTION_ALGORITHM || ['aes', '256', 'cbc'].join('-');
   const cipher = crypto.createCipheriv(algo, Buffer.from(ENCRYPTION_KEY), iv);
   let encrypted = cipher.update(text);
   encrypted = Buffer.concat([encrypted, cipher.final()]);
