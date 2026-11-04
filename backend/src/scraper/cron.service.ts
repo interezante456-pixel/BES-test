@@ -154,8 +154,8 @@ export class CronService implements OnModuleInit {
 
     config.horas.forEach((horaStr, index) => {
       const [hh, mm] = horaStr.split(':');
-      const minute = parseInt(mm, 10);
-      const hour = parseInt(hh, 10);
+      const minute = Number.parseInt(mm, 10);
+      const hour = Number.parseInt(hh, 10);
 
       // Cron: '0 <minuto> <hora> * * <dias>'
       const cronTime = `0 ${minute} ${hour} * * ${diasCron}`;
@@ -333,8 +333,8 @@ export class CronService implements OnModuleInit {
 
     config.horas.forEach((horaStr, index) => {
       const [hh, mm] = horaStr.split(':');
-      const minute = parseInt(mm, 10);
-      const hour = parseInt(hh, 10);
+      const minute = Number.parseInt(mm, 10);
+      const hour = Number.parseInt(hh, 10);
       const cronTime = `0 ${minute} ${hour} * * ${diasCron}`;
       const jobName = `${this.SUNAFIL_JOB_PREFIX}${index}-${horaStr.replace(':', '')}`;
 

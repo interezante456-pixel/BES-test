@@ -22,7 +22,7 @@ export class AccionesPreviasExtractor extends BaseSunafilExtractor {
 
       if (!registro && !tipoRequerimiento) continue;
 
-      const plazoDias = parseInt(plazoStr, 10);
+      const plazoDias = Number.parseInt(plazoStr, 10);
 
       records.push({
         modulo: ModuloSunafil.ACCIONES_PREVIAS,
@@ -33,14 +33,14 @@ export class AccionesPreviasExtractor extends BaseSunafilExtractor {
         fechaAcuseRecibo: this.parseDate(fechaAcuseStr),
         fechaNotificacion: this.parseDate(fechaNotificacionStr),
         fechaLimite: this.parseDate(fechaLimiteStr),
-        plazoDias: isNaN(plazoDias) ? null : plazoDias,
+        plazoDias: Number.isNaN(plazoDias) ? null : plazoDias,
         tienePdf: row.hasDocBtn,
         docActionSelector: `table tbody tr:nth-child(${row.rowIndex + 1}) td:nth-last-child(2) a, table tbody tr:nth-child(${row.rowIndex + 1}) td:nth-last-child(2) button`,
         pdfDescargado: false,
         metadataExtra: {
           tipoRequerimiento,
           registro,
-          plazoDias: isNaN(plazoDias) ? null : plazoDias,
+          plazoDias: Number.isNaN(plazoDias) ? null : plazoDias,
           fechaLimiteOriginal: fechaLimiteStr,
         },
       });

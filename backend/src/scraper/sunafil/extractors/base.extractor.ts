@@ -109,12 +109,12 @@ export abstract class BaseSunafilExtractor {
     if (dateTimeMatch) {
       const [, day, month, year, hours, minutes, seconds] = dateTimeMatch;
       return new Date(
-        parseInt(year, 10),
-        parseInt(month, 10) - 1,
-        parseInt(day, 10),
-        parseInt(hours, 10),
-        parseInt(minutes, 10),
-        seconds ? parseInt(seconds, 10) : 0,
+        Number.parseInt(year, 10),
+        Number.parseInt(month, 10) - 1,
+        Number.parseInt(day, 10),
+        Number.parseInt(hours, 10),
+        Number.parseInt(minutes, 10),
+        seconds ? Number.parseInt(seconds, 10) : 0,
       );
     }
 
@@ -122,7 +122,7 @@ export abstract class BaseSunafilExtractor {
     const dateMatch = cleanStr.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
     if (dateMatch) {
       const [, day, month, year] = dateMatch;
-      return new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+      return new Date(Number.parseInt(year, 10), Number.parseInt(month, 10) - 1, Number.parseInt(day, 10));
     }
 
     return null;

@@ -35,7 +35,7 @@ export class ReportesController {
     return this.reportesService.getReporteVencimientos(
       req.user.id,
       req.user.rol,
-      dias ? parseInt(dias) : 30,
+      dias ? Number.parseInt(dias, 10) : 30,
     );
   }
 }

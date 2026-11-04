@@ -19,7 +19,7 @@ export class MailService {
     if (host && port && user && pass) {
       this.transporter = nodemailer.createTransport({
         host,
-        port: parseInt(port),
+        port: Number.parseInt(port, 10),
         secure: port === '465', // true para puerto 465 (SSL), false para otros como 587 (STARTTLS)
         auth: {
           user,

@@ -39,8 +39,8 @@ export class ReportesService {
     let deudaTotal = 0;
     for (const n of notificaciones) {
       if (n.montoExigible) {
-        const num = parseFloat(n.montoExigible.replace(/[^0-9.]/g, ''));
-        if (!isNaN(num)) deudaTotal += num;
+        const num = Number.parseFloat(n.montoExigible.replace(/[^0-9.]/g, ''));
+        if (!Number.isNaN(num)) deudaTotal += num;
       }
     }
 

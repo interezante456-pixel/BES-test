@@ -35,8 +35,8 @@ export class NotificacionesController {
       req.user.id,
       req.user.rol,
       {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 25,
+        page: page ? Number.parseInt(page, 10) : 1,
+        limit: limit ? Number.parseInt(limit, 10) : 25,
         estadoGestion,
         search,
       },
@@ -59,8 +59,8 @@ export class NotificacionesController {
       req.user.id,
       req.user.rol,
       {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 50,
+        page: page ? Number.parseInt(page, 10) : 1,
+        limit: limit ? Number.parseInt(limit, 10) : 50,
         empresa,
         search,
         startDate,
@@ -86,8 +86,8 @@ export class NotificacionesController {
       req.user.id,
       req.user.rol,
       {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 50,
+        page: page ? Number.parseInt(page, 10) : 1,
+        limit: limit ? Number.parseInt(limit, 10) : 50,
         empresa,
         search,
         startDate,
@@ -127,8 +127,8 @@ export class NotificacionesController {
       req.user.id,
       req.user.rol,
       {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 50,
+        page: page ? Number.parseInt(page, 10) : 1,
+        limit: limit ? Number.parseInt(limit, 10) : 50,
         empresa,
         modulo,
         search,

@@ -477,12 +477,12 @@ export class SunatScraperService {
                 ? rowDateMatch[1].split(/[\s\/:]/)
                 : [...rowDateMatch[1].split('/'), '0', '0', '0'];
               const rowFecha = new Date(
-                parseInt(parts[2]),
-                parseInt(parts[1]) - 1,
-                parseInt(parts[0]),
-                parseInt(parts[3] || '0'),
-                parseInt(parts[4] || '0'),
-                parseInt(parts[5] || '0'),
+                Number.parseInt(parts[2], 10),
+                Number.parseInt(parts[1], 10) - 1,
+                Number.parseInt(parts[0], 10),
+                Number.parseInt(parts[3] || '0', 10),
+                Number.parseInt(parts[4] || '0', 10),
+                Number.parseInt(parts[5] || '0', 10),
               );
 
               // BREAK TEMPRANO: Si esta fila es del año anterior, aumentar contador

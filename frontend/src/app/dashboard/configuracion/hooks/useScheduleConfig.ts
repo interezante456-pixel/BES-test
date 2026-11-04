@@ -14,7 +14,7 @@ export const DIAS_MAP = [
 
 export function formatHora12(hora24: string): string {
   const [hh, mm] = hora24.split(':').map(Number);
-  if (isNaN(hh) || isNaN(mm)) return hora24;
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return hora24;
   const ampm = hh >= 12 ? 'PM' : 'AM';
   const h12 = hh % 12 || 12;
   return `${String(h12).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${ampm}`;

@@ -19,7 +19,7 @@ export class FormalizacionExtractor extends BaseSunafilExtractor {
       const asunto = row.cells[4] || 'Alerta de Formalización Laboral';
       const trabajadoresStr = row.cells[5] || '';
 
-      const trabajadores = parseInt(trabajadoresStr.replace(/\D/g, ''), 10);
+      const trabajadores = Number.parseInt(trabajadoresStr.replace(/\D/g, ''), 10);
       const codigoRef = `FORMALIZACION-${fechaNotificacionStr.replace(/\//g, '')}-${asunto.substring(0, 15).replace(/\s+/g, '')}`;
 
       records.push({
@@ -30,13 +30,13 @@ export class FormalizacionExtractor extends BaseSunafilExtractor {
         fechaDeposito: this.parseDate(fechaDepositoStr),
         fechaNotificacion: this.parseDate(fechaNotificacionStr),
         fechaLimite: this.parseDate(fechaLimiteRespuestaStr),
-        trabajadoresIncorporados: isNaN(trabajadores) ? null : trabajadores,
+        trabajadoresIncorporados: Number.isNaN(trabajadores) ? null : trabajadores,
         tienePdf: row.hasDocBtn,
         docActionSelector: `table tbody tr:nth-child(${row.rowIndex + 1}) td:nth-last-child(2) button, table tbody tr:nth-child(${row.rowIndex + 1}) td:nth-last-child(2) a`,
         pdfDescargado: false,
         metadataExtra: {
           categoria,
-          trabajadoresIncorporados: isNaN(trabajadores) ? null : trabajadores,
+          trabajadoresIncorporados: Number.isNaN(trabajadores) ? null : trabajadores,
           fechaLimiteRespuesta: fechaLimiteRespuestaStr,
         },
       });
