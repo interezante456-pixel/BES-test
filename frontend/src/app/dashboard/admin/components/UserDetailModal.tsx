@@ -38,7 +38,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({ isOpen, userId
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <button type="button" aria-label="Cerrar detalle" tabIndex={-1} className="absolute inset-0 w-full h-full bg-black/60 backdrop-blur-sm border-0 cursor-default p-0 m-0" onClick={onClose} />
       <div className="relative w-full max-w-2xl bg-[#111827] rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
 
         {/* Header */}

@@ -67,7 +67,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="absolute inset-0" onClick={handleClose} />
+      <button type="button" aria-label="Cerrar modal" tabIndex={-1} className="absolute inset-0 w-full h-full bg-transparent border-0 cursor-default p-0 m-0" onClick={handleClose} />
 
       <div className="relative w-full max-w-md bg-[#111827] border border-white/10 rounded-3xl shadow-2xl overflow-hidden z-10">
         {/* Header */}

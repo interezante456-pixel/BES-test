@@ -45,7 +45,6 @@ export const NuevoRecordatorioModal: React.FC<NuevoRecordatorioModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
       <div
         className="bg-[#111827] border border-white/10 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-3 border-b border-white/5">
           <h3 className="text-base font-bold text-white flex items-center gap-2">

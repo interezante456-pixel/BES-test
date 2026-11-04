@@ -65,8 +65,10 @@ function PortalSyncCard({
   // Estado Minimizador (Píldora compacta flotante)
   if (isMinimized) {
     return (
-      <div
+      <button
+        type="button"
         onClick={onToggleMinimize}
+        aria-label="Expandir sincronización"
         className={`pointer-events-auto flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-900/95 border ${
           isFinished ? 'border-emerald-500/40 text-emerald-300' : theme.borderNormal
         } text-white shadow-2xl backdrop-blur-xl cursor-pointer hover:brightness-110 transition-all group`}

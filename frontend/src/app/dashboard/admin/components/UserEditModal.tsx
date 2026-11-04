@@ -114,7 +114,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <button type="button" aria-label="Cerrar edición" tabIndex={-1} className="absolute inset-0 w-full h-full bg-black/60 backdrop-blur-sm border-0 cursor-default p-0 m-0" onClick={onClose} />
       <div className="relative w-full max-w-xl bg-[#111827] rounded-3xl border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-white/5 flex items-center justify-between bg-amber-500/5">
@@ -238,10 +238,11 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
               {AVAILABLE_MODULES.map(mod => {
                 const isChecked = form.modulosPermitidos.includes(mod.key);
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={mod.key}
                     onClick={() => toggleModule(mod.key)}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
+                    className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
                       isChecked
                         ? 'bg-amber-500/10 border-amber-500/40 text-white'
                         : 'bg-white/[0.02] border-white/5 text-gray-400 hover:bg-white/5'

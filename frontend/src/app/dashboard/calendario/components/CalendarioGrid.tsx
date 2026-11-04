@@ -143,10 +143,11 @@ export const CalendarioGrid: React.FC<CalendarioGridProps> = ({
           const tieneCompromiso = evs.some((e) => e.tipo === 'COMPROMISO_EQUIPO');
 
           return (
-            <div
+            <button
+              type="button"
               key={diaStr}
               onClick={() => onSelectDia(diaStr, evs)}
-              className={`min-h-[90px] sm:min-h-[110px] p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${
+              className={`w-full text-left min-h-[90px] sm:min-h-[110px] p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${
                 esHoy
                   ? 'bg-orange-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10 ring-1 ring-orange-500/30'
                   : evs.length > 0

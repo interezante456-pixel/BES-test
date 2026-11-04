@@ -181,10 +181,11 @@ export default function MisAsignadasPage() {
               const Icon = estConfig.icon;
 
               return (
-                <div
+                <button
+                  type="button"
                   key={notif.id}
                   onClick={() => setSelectedNotif(notif)}
-                  className="p-4 hover:bg-white/[0.02] transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                  className="w-full text-left p-4 hover:bg-white/[0.02] transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                 >
                   <div className="space-y-1.5 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">

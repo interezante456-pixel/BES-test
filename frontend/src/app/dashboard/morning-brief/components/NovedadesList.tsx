@@ -47,10 +47,11 @@ export const NovedadesList: React.FC<NovedadesListProps> = ({
           </div>
         ) : (
           novedades.map((notif) => (
-            <div
+            <button
+              type="button"
               key={notif.id}
               onClick={() => onSelectNotificacion(notif)}
-              className="py-3 flex items-start justify-between gap-3 hover:bg-white/[0.02] px-2 rounded-xl transition-all cursor-pointer group"
+              className="w-full text-left py-3 flex items-start justify-between gap-3 hover:bg-white/[0.02] px-2 rounded-xl transition-all cursor-pointer group"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">

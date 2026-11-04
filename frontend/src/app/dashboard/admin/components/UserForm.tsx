@@ -94,7 +94,7 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
     <>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleCancel} />
+          <button type="button" aria-label="Cerrar formulario" tabIndex={-1} className="absolute inset-0 w-full h-full bg-black/60 backdrop-blur-sm border-0 cursor-default p-0 m-0" onClick={handleCancel} />
           <div className="relative w-full max-w-xl bg-[#111827] rounded-3xl border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
         {/* Header */}
@@ -212,10 +212,11 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
               {AVAILABLE_MODULES.map(mod => {
                 const isChecked = newUser.modulosPermitidos.includes(mod.key);
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={mod.key}
                     onClick={() => toggleModule(mod.key)}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
+                    className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
                       isChecked
                         ? 'bg-indigo-600/10 border-indigo-500/40 text-white'
                         : 'bg-white/[0.02] border-white/5 text-gray-400 hover:bg-white/5'

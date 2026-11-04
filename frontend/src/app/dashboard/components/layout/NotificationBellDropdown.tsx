@@ -63,13 +63,14 @@ export const NotificationBellDropdown: React.FC = () => {
               <p className="text-xs text-gray-500 text-center py-4">No hay notificaciones sin leer.</p>
             ) : (
               recentNotifications.map((n) => (
-                <div
+                <button
+                  type="button"
                   key={n.id}
                   onClick={() => {
                     setShowNotifications(false);
                     router.push(`/dashboard/bandeja?empresa=${n.empresa.id}`);
                   }}
-                  className="p-2.5 rounded-xl hover:bg-white/[0.02] cursor-pointer transition-colors border border-transparent hover:border-white/5"
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-white/[0.02] cursor-pointer transition-colors border border-transparent hover:border-white/5"
                 >
                   <div className="flex justify-between items-start mb-1 gap-2">
                     <span className="text-[11px] font-bold text-gray-300 truncate max-w-[150px]">

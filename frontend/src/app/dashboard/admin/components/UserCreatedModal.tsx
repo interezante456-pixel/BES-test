@@ -40,7 +40,6 @@ export default function UserCreatedModal({
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
       <div
         className="bg-slate-900 border border-emerald-500/30 rounded-3xl w-full max-w-md shadow-2xl shadow-emerald-500/10 overflow-hidden animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="relative p-6 text-center">
           {/* Botón cerrar */}

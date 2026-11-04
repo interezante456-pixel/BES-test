@@ -120,7 +120,7 @@ export function PdfViewerDrawer({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
       {/* Backdrop click to close */}
-      <div className="absolute inset-0" onClick={onClose} />
+      <button type="button" aria-label="Cerrar visor" tabIndex={-1} className="absolute inset-0 w-full h-full bg-transparent border-0 cursor-default p-0 m-0" onClick={onClose} />
 
       {/* Centered Modal Content Box */}
       <div className="relative w-full max-w-5xl h-[90vh] bg-[#111827] border border-white/10 rounded-3xl flex flex-col shadow-2xl overflow-hidden z-10">

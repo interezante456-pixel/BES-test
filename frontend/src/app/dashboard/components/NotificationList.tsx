@@ -67,7 +67,14 @@ export const NotificationList: React.FC<NotificationListProps> = ({
           </div>
         ) : notifications.map((notif: any) => (
           <div 
+            role="button"
+            tabIndex={0}
             key={notif.id} 
+            onKeyDown={(e) => {
+              if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                if (notif.rutaArchivoPdf) onViewPdf(notif.rutaArchivoPdf);
+              }
+            }}
             className={`p-6 flex items-start gap-6 transition-colors hover:bg-white/[0.02] cursor-pointer group ${notif.estado === 'NO_LEIDO' ? 'bg-blue-500/[0.02]' : ''}`}
             onClick={() => notif.rutaArchivoPdf && onViewPdf(notif.rutaArchivoPdf)}
           >

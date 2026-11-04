@@ -91,6 +91,14 @@ function KpiCard({
 
   return (
     <div
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && onClick) {
+          e.preventDefault();
+          onClick();
+        }
+      } : undefined}
       onClick={onClick}
       className={`bg-gradient-to-br ${colors[color]} border rounded-3xl p-5 ${
         clickable ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''

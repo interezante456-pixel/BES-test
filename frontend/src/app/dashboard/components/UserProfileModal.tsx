@@ -41,7 +41,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-        <div className="absolute inset-0" onClick={onClose} />
+        <button type="button" aria-label="Cerrar perfil" tabIndex={-1} className="absolute inset-0 w-full h-full bg-transparent border-0 cursor-default p-0 m-0" onClick={onClose} />
 
         <div className="relative w-full max-w-2xl bg-[#111827] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-10">
           

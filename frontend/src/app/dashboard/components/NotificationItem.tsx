@@ -45,6 +45,14 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ') && onClick) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={`p-6 flex items-start gap-4 sm:gap-6 transition-all hover:bg-white/[0.03] cursor-pointer group ${
         alertInfo.borderClass
       } ${isSelected ? 'bg-blue-500/[0.04]' : ''}`}

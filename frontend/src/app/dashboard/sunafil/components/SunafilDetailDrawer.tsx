@@ -54,7 +54,6 @@ export const SunafilDetailDrawer: React.FC<SunafilDetailDrawerProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div
         className="bg-[#111827] border border-white/10 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="p-6 border-b border-white/5 relative bg-gradient-to-b from-indigo-500/10 to-transparent">

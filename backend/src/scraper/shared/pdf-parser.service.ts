@@ -55,11 +55,11 @@ export class PdfParserService {
     let montoExigible: string | null = null;
     let expedienteCoactivo: string | null = null;
 
-    // 1. Extraer expedientes coactivos
+    // 1. Extraer expedientes coactivos (sin retroceso catastrófico / linear regexes)
     const expRegexes = [
-      /EXPEDIENTE\s*(?:NÚMERO|N°|Nº|NO\.?)\s*:?\s*([\w\-]{8,25})/i,
-      /RESOLUCIÓN\s*(?:DE\s*EJECUCIÓN\s*COACTIVA|COACTIVA)?\s*N[°º.]?\s*:?\s*([\w\-]{8,25})/i,
-      /EXPEDIENTE\s*:?\s*([\w\-]{8,25})/i,
+      /EXPEDIENTE\s+(?:NÚMERO|N°|Nº|NO\.?)(?:\s*:\s*|\s+)([A-Za-z0-9_-]{8,25})/i,
+      /RESOLUCIÓN(?:\s+DE\s+EJECUCIÓN)?(?:\s+COACTIVA)?\s+N[°º.]?(?:\s*:\s*|\s+)([A-Za-z0-9_-]{8,25})/i,
+      /EXPEDIENTE(?:\s*:\s*|\s+)([A-Za-z0-9_-]{8,25})/i,
     ];
 
     for (const reg of expRegexes) {
@@ -78,7 +78,7 @@ export class PdfParserService {
       /total\s*deuda\s*exigible:?\s*(S\/?\.?\s*[\d,]+\.\d{2})/i,
       /asciende\s*a\s*la\s*suma\s*de:?\s*(S\/?\.?\s*[\d,]+\.\d{2})/i,
       /total\s*a\s*pagar:?\s*(S\/?\.?\s*[\d,]+\.\d{2})/i,
-      /deuda\s*tributaria\s*pendiente[^\n\r]*?:?\s*(S\/?\.?\s*[\d,]+\.\d{2})/i,
+      /deuda\s+tributaria\s+pendiente[^\n\r:]{0,50}(?::\s*|\s+)(S\/?\.?\s*[\d,]+\.\d{2})/i,
       /monto\s*exigible:?\s*(S\/?\.?\s*[\d,]+\.\d{2})/i,
       /suma\s*de:?\s*(S\/?\.?\s*[\d,]+\.\d{2})/i,
       /(S\/?\.\s*[\d,]+\.\d{2})/i,

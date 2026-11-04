@@ -612,12 +612,11 @@ export class SunatScraperService {
                       );
 
                       if (idMatch && idMatch[1]) {
-                        // Buscamos algo que DE VERDAD parezca un código de resolución (que contenga al menos 5 números seguidos)
-                        const textNumber = text.match(
-                          /\b([a-z0-9-]*\d{5,}[a-z0-9-]*)\b/i,
-                        );
-                        const visualId = textNumber
-                          ? textNumber[0].toUpperCase()
+                        // Buscamos algo que DE VERDAD parezca un código de resolución (lineal sin backtracking)
+                        const tokens = text.match(/\b[A-Za-z0-9-]{5,}\b/g);
+                        const foundToken = tokens ? tokens.find((t) => /\d{5,}/.test(t)) : null;
+                        const visualId = foundToken
+                          ? foundToken.toUpperCase()
                           : idMatch[1];
                         return { internalId: idMatch[1], visualId };
                       }
@@ -1638,7 +1637,7 @@ if (fs.existsSync(filePath)) {
           // URL directa (fisca*.pdf u otro formato)
           downloadUrl = pdfUrlStr;
           const filenameMatch = pdfUrlStr.match(/fisca(\d+)\.pdf/) ||
-            pdfUrlStr.match(/[?&][^&]*?(\d{10,20})/);
+            pdfUrlStr.match(/[?&][^&0-9]*(\d{10,20})/);
           resolvedFileId = filenameMatch ? filenameMatch[1] : (targetFileId || constanciaId);
         }
       } else {

@@ -28,8 +28,11 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     <>
       {/* Backdrop para móvil */}
       {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden transition-opacity"
+        <button
+          type="button"
+          aria-label="Cerrar menú móvil"
+          tabIndex={-1}
+          className="fixed inset-0 w-full h-full bg-black/60 backdrop-blur-sm z-40 md:hidden border-0 cursor-default p-0 m-0 transition-opacity"
           onClick={onCloseMobileMenu}
         />
       )}
@@ -62,9 +65,10 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
         {/* Footer del Sidebar */}
         <div className="p-4 md:p-6 border-t border-white/5 space-y-3">
-          <div
+          <button
+            type="button"
             onClick={onOpenProfile}
-            className="flex items-center gap-3 p-2.5 -mx-1 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/5 cursor-pointer transition-all group"
+            className="w-full text-left flex items-center gap-3 p-2.5 -mx-1 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/5 cursor-pointer transition-all group"
             title="Ver mi perfil de usuario"
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 border border-white/10 flex items-center justify-center text-white font-bold flex-shrink-0 group-hover:scale-105 transition-transform shadow-md shadow-indigo-500/20">
@@ -76,7 +80,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               </p>
               <p className="text-[11px] text-gray-400 truncate">{user?.email}</p>
             </div>
-          </div>
+          </button>
 
           <button
             onClick={() => {
