@@ -100,9 +100,10 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1.5">Nueva Contraseña</label>
+            <label htmlFor="new-password" className="block text-xs font-semibold text-gray-400 mb-1.5">Nueva Contraseña</label>
             <div className="relative">
               <input
+                id="new-password"
                 required
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
@@ -121,8 +122,9 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1.5">Reafirmar / Confirmar Nueva Contraseña</label>
+            <label htmlFor="confirm-password" className="block text-xs font-semibold text-gray-400 mb-1.5">Reafirmar / Confirmar Nueva Contraseña</label>
             <input
+              id="confirm-password"
               required
               type={showPassword ? 'text' : 'password'}
               placeholder="Repite la nueva contraseña"

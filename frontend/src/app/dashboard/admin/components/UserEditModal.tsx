@@ -136,8 +136,9 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Nombres</label>
+              <label htmlFor="edit-user-nombres" className="block text-xs font-semibold text-gray-400 mb-1.5">Nombres</label>
               <input
+                id="edit-user-nombres"
                 required
                 value={form.nombres}
                 onChange={e => setForm({ ...form, nombres: e.target.value })}
@@ -145,8 +146,9 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Apellidos</label>
+              <label htmlFor="edit-user-apellidos" className="block text-xs font-semibold text-gray-400 mb-1.5">Apellidos</label>
               <input
+                id="edit-user-apellidos"
                 required
                 value={form.apellidos}
                 onChange={e => setForm({ ...form, apellidos: e.target.value })}
@@ -157,8 +159,9 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">DNI (8 dígitos)</label>
+              <label htmlFor="edit-user-dni" className="block text-xs font-semibold text-gray-400 mb-1.5">DNI (8 dígitos)</label>
               <input
+                id="edit-user-dni"
                 required
                 maxLength={8}
                 value={form.dni}
@@ -168,8 +171,9 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Rol</label>
+              <label htmlFor="edit-user-rol" className="block text-xs font-semibold text-gray-400 mb-1.5">Rol</label>
               <select
+                id="edit-user-rol"
                 value={form.rol}
                 onChange={e => setForm({ ...form, rol: e.target.value })}
                 className="w-full bg-[#1f2937] border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-amber-500/50 text-sm"
@@ -190,11 +194,12 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+              <label htmlFor="edit-user-password" className="block text-xs font-semibold text-gray-400 mb-1.5">
                 Nueva Contraseña <span className="text-gray-600 font-normal">(opcional)</span>
               </label>
               <div className="relative">
                 <input
+                  id="edit-user-password"
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={e => setForm({ ...form, password: e.target.value })}
@@ -212,8 +217,9 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Telegram Chat ID (Alertas)</label>
+              <label htmlFor="edit-user-telegram" className="block text-xs font-semibold text-gray-400 mb-1.5">Telegram Chat ID (Alertas)</label>
               <input
+                id="edit-user-telegram"
                 value={form.telegramChatId}
                 onChange={e => setForm({ ...form, telegramChatId: e.target.value })}
                 placeholder="Ej: 123456789"

@@ -117,8 +117,9 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Nombres</label>
+              <label htmlFor="create-user-nombres" className="block text-xs font-semibold text-gray-400 mb-1.5">Nombres</label>
               <input
+                id="create-user-nombres"
                 required
                 value={newUser.nombres}
                 onChange={e => setNewUser({...newUser, nombres: e.target.value})}
@@ -127,8 +128,9 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Apellidos</label>
+              <label htmlFor="create-user-apellidos" className="block text-xs font-semibold text-gray-400 mb-1.5">Apellidos</label>
               <input
+                id="create-user-apellidos"
                 required
                 value={newUser.apellidos}
                 onChange={e => setNewUser({...newUser, apellidos: e.target.value})}
@@ -140,8 +142,9 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">DNI (8 dígitos)</label>
+              <label htmlFor="create-user-dni" className="block text-xs font-semibold text-gray-400 mb-1.5">DNI (8 dígitos)</label>
               <input
+                id="create-user-dni"
                 required
                 maxLength={8}
                 value={newUser.dni}
@@ -152,8 +155,9 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Contraseña</label>
+              <label htmlFor="create-user-password" className="block text-xs font-semibold text-gray-400 mb-1.5">Contraseña</label>
               <input
+                id="create-user-password"
                 required
                 type="password"
                 value={newUser.password}
@@ -174,8 +178,9 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Rol</label>
+              <label htmlFor="create-user-rol" className="block text-xs font-semibold text-gray-400 mb-1.5">Rol</label>
               <select
+                id="create-user-rol"
                 value={newUser.rol}
                 onChange={e => setNewUser({...newUser, rol: e.target.value})}
                 className="w-full bg-[#1f2937] border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm"
@@ -186,8 +191,9 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Telegram Chat ID (Opcional)</label>
+              <label htmlFor="create-user-telegram" className="block text-xs font-semibold text-gray-400 mb-1.5">Telegram Chat ID (Opcional)</label>
               <input
+                id="create-user-telegram"
                 value={newUser.telegramChatId}
                 onChange={e => setNewUser({...newUser, telegramChatId: e.target.value})}
                 className="w-full bg-[#1f2937] border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm transition-all"
@@ -198,10 +204,10 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
 
           {/* ASIGNACIÓN DE MÓDULOS */}
           <div className="pt-2">
-            <label className="block text-xs font-bold text-gray-300 mb-2 flex items-center gap-1.5">
+            <span className="block text-xs font-bold text-gray-300 mb-2 flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5 text-indigo-400" />
               Módulos Permitidos para este Usuario
-            </label>
+            </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {AVAILABLE_MODULES.map(mod => {
                 const isChecked = newUser.modulosPermitidos.includes(mod.key);

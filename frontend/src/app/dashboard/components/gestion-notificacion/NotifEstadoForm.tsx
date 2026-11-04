@@ -48,7 +48,7 @@ export const NotifEstadoForm: React.FC<NotifEstadoFormProps> = ({
 
     {/* Selector de Estado */}
     <div>
-      <label className="text-xs font-semibold text-gray-300 block mb-2">Estado de Gestión</label>
+      <span className="text-xs font-semibold text-gray-300 block mb-2">Estado de Gestión</span>
       <div className="grid grid-cols-2 gap-2">
         {ESTADOS_GESTION.map((est) => {
           const Icon = est.icon;
@@ -95,8 +95,8 @@ export const NotifEstadoForm: React.FC<NotifEstadoFormProps> = ({
 
     {/* Notas */}
     <div>
-      <label className="text-[11px] font-semibold text-gray-400 block mb-1">Instrucciones o Notas del Caso</label>
-      <textarea rows={2} value={notasInternas} onChange={(e) => setNotasInternas(e.target.value)}
+      <label htmlFor="notif-notas-internas" className="text-[11px] font-semibold text-gray-400 block mb-1">Instrucciones o Notas del Caso</label>
+      <textarea id="notif-notas-internas" rows={2} value={notasInternas} onChange={(e) => setNotasInternas(e.target.value)}
         placeholder="Ej: Se coordinó con el cliente, el contador preparará el descargo para presentar el viernes..."
         className="w-full bg-[#111827] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none" />
     </div>

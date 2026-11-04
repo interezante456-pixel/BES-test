@@ -75,16 +75,18 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           <div>
-            <label className="block text-sm font-semibold text-gray-400 mb-1.5">RUC</label>
-            <input 
+            <label htmlFor="empresa-ruc" className="block text-sm font-semibold text-gray-400 mb-1.5">RUC</label>
+            <input
+              id="empresa-ruc" 
               type="text" required maxLength={11} value={ruc} onChange={(e) => setRuc(e.target.value)}
               className="w-full bg-[#1f2937]/50 border border-white/5 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-mono"
               placeholder="206..."
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-400 mb-1.5">Razón Social</label>
-            <input 
+            <label htmlFor="empresa-razon-social" className="block text-sm font-semibold text-gray-400 mb-1.5">Razón Social</label>
+            <input
+              id="empresa-razon-social" 
               type="text" required value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)}
               className="w-full bg-[#1f2937]/50 border border-white/5 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
               placeholder="Nombre comercial o razón social"
@@ -92,16 +94,18 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-400 mb-1.5">Usuario SOL</label>
-              <input 
+              <label htmlFor="empresa-usuario-sol" className="block text-sm font-semibold text-gray-400 mb-1.5">Usuario SOL</label>
+              <input
+                id="empresa-usuario-sol" 
                 type="text" required value={usuarioSol} onChange={(e) => setUsuarioSol(e.target.value)}
                 className="w-full bg-[#1f2937]/50 border border-white/5 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-mono"
                 placeholder="MODDATOS"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-400 mb-1.5">Clave SOL</label>
-              <input 
+              <label htmlFor="empresa-clave-sol" className="block text-sm font-semibold text-gray-400 mb-1.5">Clave SOL</label>
+              <input
+                id="empresa-clave-sol"
                 type="password" required={!initialData} value={claveSol} onChange={(e) => setClaveSol(e.target.value)}
                 className="w-full bg-[#1f2937]/50 border border-white/5 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-mono"
                 placeholder={initialData ? "•••••••• (Sin cambios)" : "Clave SOL"}
@@ -112,20 +116,21 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
           {/* Entidades Habilitadas */}
           <div className="pt-2">
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">
+              <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider">
                 Entidades de Monitoreo Habilitadas
-              </label>
+              </span>
               <span className="text-[10px] text-amber-400/90 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
                 Clave SOL compartida
               </span>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <label className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
+              <label htmlFor="empresa-habilitado-sunat" className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
                 habilitadoSunat
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
                   : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
               }`}>
                 <input
+                  id="empresa-habilitado-sunat"
                   type="checkbox"
                   checked={habilitadoSunat}
                   onChange={(e) => setHabilitadoSunat(e.target.checked)}
@@ -137,12 +142,13 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
                 </div>
               </label>
 
-              <label className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
+              <label htmlFor="empresa-habilitado-sunafil" className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
                 habilitadoSunafil
                   ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
                   : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
               }`}>
                 <input
+                  id="empresa-habilitado-sunafil"
                   type="checkbox"
                   checked={habilitadoSunafil}
                   onChange={(e) => setHabilitadoSunafil(e.target.checked)}

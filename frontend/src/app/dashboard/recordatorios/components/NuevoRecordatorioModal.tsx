@@ -62,7 +62,7 @@ export const NuevoRecordatorioModal: React.FC<NuevoRecordatorioModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs font-semibold text-gray-300 block mb-1.5">
+            <label htmlFor="recordatorio-titulo" className="text-xs font-semibold text-gray-300 block mb-1.5">
               Título del Recordatorio *
             </label>
             <input
@@ -70,6 +70,7 @@ export const NuevoRecordatorioModal: React.FC<NuevoRecordatorioModalProps> = ({
               required
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
+              id="recordatorio-titulo"
               placeholder="Ej: Llamar a cliente para descargo coactivo"
               className="w-full bg-[#1e293b]/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
             />
@@ -77,10 +78,11 @@ export const NuevoRecordatorioModal: React.FC<NuevoRecordatorioModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-300 block mb-1.5">
+              <label htmlFor="recordatorio-fecha" className="text-xs font-semibold text-gray-300 block mb-1.5">
                 Fecha a Recordar *
               </label>
               <input
+                id="recordatorio-fecha"
                 type="date"
                 required
                 value={fechaRecordar}
@@ -90,10 +92,11 @@ export const NuevoRecordatorioModal: React.FC<NuevoRecordatorioModalProps> = ({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-300 block mb-1.5">
+              <label htmlFor="recordatorio-empresa" className="text-xs font-semibold text-gray-300 block mb-1.5">
                 Empresa (Opcional)
               </label>
               <select
+                id="recordatorio-empresa"
                 value={empresaId}
                 onChange={(e) => setEmpresaId(e.target.value)}
                 className="w-full bg-[#1e293b]/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -109,10 +112,11 @@ export const NuevoRecordatorioModal: React.FC<NuevoRecordatorioModalProps> = ({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-300 block mb-1.5">
+            <label htmlFor="recordatorio-descripcion" className="text-xs font-semibold text-gray-300 block mb-1.5">
               Detalle Adicional
             </label>
             <textarea
+              id="recordatorio-descripcion"
               rows={2}
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}

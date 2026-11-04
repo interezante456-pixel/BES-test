@@ -80,7 +80,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs font-semibold text-gray-300 block mb-1.5">
+            <label htmlFor="evento-titulo" className="text-xs font-semibold text-gray-300 block mb-1.5">
               Título del Evento / Compromiso *
             </label>
             <input
@@ -88,6 +88,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
               required
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
+              id="evento-titulo"
               placeholder="Ej: Presentar descargo SUNAT de Empresa ABC"
               className="w-full bg-[#1e293b]/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
@@ -95,10 +96,11 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-300 block mb-1.5">
+              <label htmlFor="evento-fecha" className="text-xs font-semibold text-gray-300 block mb-1.5">
                 Fecha *
               </label>
               <input
+                id="evento-fecha"
                 type="date"
                 required
                 value={fecha}
@@ -108,10 +110,11 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-300 block mb-1.5">
+              <label htmlFor="evento-empresa" className="text-xs font-semibold text-gray-300 block mb-1.5">
                 Empresa (Opcional)
               </label>
               <select
+                id="evento-empresa"
                 value={empresaId}
                 onChange={(e) => setEmpresaId(e.target.value)}
                 className="w-full bg-[#1e293b]/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
@@ -127,10 +130,11 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-300 block mb-1.5">
+            <label htmlFor="evento-descripcion" className="text-xs font-semibold text-gray-300 block mb-1.5">
               Detalle o Instrucciones Adicionales
             </label>
             <textarea
+              id="evento-descripcion"
               rows={2}
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
