@@ -80,7 +80,6 @@ export const UserCompanyAssignModal: React.FC<UserCompanyAssignModalProps> = ({
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Buscar empresa por nombre o RUC..."
               className="flex-1 bg-transparent text-white text-sm outline-none placeholder-gray-500"
-              autoFocus
             />
           </div>
         </div>

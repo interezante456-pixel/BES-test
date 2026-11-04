@@ -59,7 +59,7 @@ export class SunafilDownloaderService {
       if (button) {
         await button.click();
         await new Promise((r) => setTimeout(r, 2000));
-        // Aquí se puede verificar el archivo recién creado en targetDir
+        return targetDir;
       }
       
       return null;

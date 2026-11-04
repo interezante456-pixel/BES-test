@@ -49,6 +49,7 @@ Thumbs.db
 katalon/
 .katalon/
 docs-qa/
+img sonarqube/
 *katalon*
 *.prj
 

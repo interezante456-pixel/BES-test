@@ -35,7 +35,7 @@ export function readExcelFile(file: File): Promise<any[]> {
         reject(err);
       }
     };
-    reader.onerror = (err) => reject(err);
+    reader.onerror = () => reject(new Error('Error al leer el archivo Excel'));
     reader.readAsArrayBuffer(file);
   });
 }

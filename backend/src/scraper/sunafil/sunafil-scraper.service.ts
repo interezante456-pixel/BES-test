@@ -21,6 +21,8 @@ import {
   ModuloSunafil,
 } from './interfaces/sunafil-notificacion.interface';
 
+const DEFAULT_SYNC_OPTIONS: SyncSunafilOptions = { descargarPdfs: false };
+
 @Injectable()
 export class SunafilScraperService {
   private readonly logger = new Logger(SunafilScraperService.name);
@@ -54,7 +56,7 @@ export class SunafilScraperService {
    */
   async sincronizarEmpresa(
     empresaId: string,
-    options: SyncSunafilOptions = { descargarPdfs: false },
+    options: SyncSunafilOptions = DEFAULT_SYNC_OPTIONS,
   ): Promise<SyncSunafilResult> {
     const empresa = await this.prisma.empresa.findUnique({
       where: { id: empresaId },
