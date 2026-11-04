@@ -18,15 +18,22 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package.json package-lock.json ./
 
-RUN npm install
+RUN npm ci --ignore-scripts
 
-COPY . .
+COPY src ./src
+COPY prisma ./prisma
+COPY tsconfig*.json ./
+COPY nest-cli.json ./
 
-RUN npx prisma generate
+RUN ./node_modules/.bin/prisma generate
 RUN npm run build
+
+# Permisos para el usuario no privilegiado node
+RUN chown -R node:node /app
+USER node
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && if [ -f dist/main.js ]; then node dist/main; else node dist/src/main; fi"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && if [ -f dist/main.js ]; then node dist/main; else node dist/src/main; fi"]

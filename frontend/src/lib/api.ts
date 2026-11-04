@@ -25,7 +25,8 @@ const getBaseURL = () => {
     // En producción (ej: panel.oracon.com) - usar rutas relativas ya que nginx hace el proxy
     return '';
   }
-  return process.env.INTERNAL_API_URL || 'http://backend:3000';
+  const internalProto = process.env.INTERNAL_API_PROTOCOL || 'http';
+  return process.env.INTERNAL_API_URL || `${internalProto}://backend:3000`;
 };
 
 

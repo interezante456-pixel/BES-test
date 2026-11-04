@@ -59,7 +59,7 @@ export function useScheduleConfig(isAdmin: boolean) {
         setLastSaved({
           sincroActiva: activa,
           dias: [...dias].sort((a, b) => a - b),
-          horas: [...horas].sort(),
+          horas: [...horas].sort((a, b) => a.localeCompare(b)),
           updatedAt: res.data.updatedAt,
         });
       }
@@ -82,7 +82,7 @@ export function useScheduleConfig(isAdmin: boolean) {
       (sincroActiva !== lastSaved.sincroActiva ||
         JSON.stringify([...diasSeleccionados].sort((a, b) => a - b)) !==
           JSON.stringify(lastSaved.dias) ||
-        JSON.stringify([...horasProgramadas].sort()) !==
+        JSON.stringify([...horasProgramadas].sort((a, b) => a.localeCompare(b))) !==
           JSON.stringify(lastSaved.horas))
   );
 
@@ -104,7 +104,7 @@ export function useScheduleConfig(isAdmin: boolean) {
       toast.warning('Esta hora ya está en la lista.', 'Horarios');
       return;
     }
-    const updated = [...horasProgramadas, nuevaHora].sort();
+    const updated = [...horasProgramadas, nuevaHora].sort((a, b) => a.localeCompare(b));
     setHorasProgramadas(updated);
   };
 
@@ -149,7 +149,7 @@ export function useScheduleConfig(isAdmin: boolean) {
         setLastSaved({
           sincroActiva: activa,
           dias: [...dias].sort((a, b) => a - b),
-          horas: [...horas].sort(),
+          horas: [...horas].sort((a, b) => a.localeCompare(b)),
           updatedAt: new Date().toISOString(),
         });
       }

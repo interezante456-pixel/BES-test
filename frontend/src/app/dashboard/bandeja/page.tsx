@@ -153,7 +153,7 @@ function BandejaContent() {
                   onClick={() => handleViewPdf(notif)}
                   onRetryPdf={(e) => {
                     e.stopPropagation();
-                    retryPdf(notif.id);
+                    void retryPdf(notif.id);
                   }}
                 />
               ))

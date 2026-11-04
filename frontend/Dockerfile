@@ -2,16 +2,22 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
 
-COPY . .
+COPY src ./src
+COPY public ./public
+COPY next.config.ts ./
+COPY postcss.config.mjs ./
+COPY tsconfig.json ./
 
 # Argumento de compilación para inyectar la URL del backend en la build estática de Next.js
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 RUN npm run build
+
+USER node
 
 EXPOSE 3000
 
