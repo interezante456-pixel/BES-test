@@ -124,7 +124,7 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
               </span>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <label htmlFor="empresa-habilitado-sunat" className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
+              <label htmlFor="empresa-habilitado-sunat" aria-label="Habilitar SUNAT Buzón SOL" className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
                 habilitadoSunat
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
                   : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
@@ -136,13 +136,13 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
                   onChange={(e) => setHabilitadoSunat(e.target.checked)}
                   className="rounded text-emerald-500 focus:ring-emerald-500 w-4 h-4 bg-gray-900 border-gray-700"
                 />
-                <div>
-                  <p className="text-xs font-bold text-white">🔴 SUNAT</p>
-                  <p className="text-[10px] text-gray-400">Buzón SOL</p>
-                </div>
+                <span>
+                  <span className="text-xs font-bold text-white block">🔴 SUNAT</span>
+                  <span className="text-[10px] text-gray-400 block">Buzón SOL</span>
+                </span>
               </label>
 
-              <label htmlFor="empresa-habilitado-sunafil" className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
+              <label htmlFor="empresa-habilitado-sunafil" aria-label="Habilitar SUNAFIL Casilla Electrónica" className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
                 habilitadoSunafil
                   ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
                   : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
@@ -154,10 +154,10 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({
                   onChange={(e) => setHabilitadoSunafil(e.target.checked)}
                   className="rounded text-indigo-500 focus:ring-indigo-500 w-4 h-4 bg-gray-900 border-gray-700"
                 />
-                <div>
-                  <p className="text-xs font-bold text-white">🔵 SUNAFIL</p>
-                  <p className="text-[10px] text-gray-400">Casilla Electrónica</p>
-                </div>
+                <span>
+                  <span className="text-xs font-bold text-white block">🔵 SUNAFIL</span>
+                  <span className="text-[10px] text-gray-400 block">Casilla Electrónica</span>
+                </span>
               </label>
             </div>
           </div>
