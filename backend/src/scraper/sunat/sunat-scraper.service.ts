@@ -1636,9 +1636,21 @@ if (fs.existsSync(filePath)) {
         } else {
           // URL directa (fisca*.pdf u otro formato)
           downloadUrl = pdfUrlStr;
-          const filenameMatch = pdfUrlStr.match(/fisca(\d+)\.pdf/) ||
-            pdfUrlStr.match(/[?&][^&0-9]*(\d{10,20})/);
-          resolvedFileId = filenameMatch ? filenameMatch[1] : (targetFileId || constanciaId);
+          const fiscaMatch = pdfUrlStr.match(/fisca(\d+)\.pdf/);
+          let queryDigits: string | null = null;
+          try {
+            const parsedUrl = new URL(pdfUrlStr);
+            for (const val of parsedUrl.searchParams.values()) {
+              if (/^\d{10,20}$/.test(val)) {
+                queryDigits = val;
+                break;
+              }
+            }
+          } catch {
+            const rawMatch = pdfUrlStr.match(/\b\d{10,20}\b/);
+            queryDigits = rawMatch ? rawMatch[0] : null;
+          }
+          resolvedFileId = fiscaMatch ? fiscaMatch[1] : (queryDigits || targetFileId || constanciaId);
         }
       } else {
         // No se capturó ninguna URL: fallback a bajarArchivo
