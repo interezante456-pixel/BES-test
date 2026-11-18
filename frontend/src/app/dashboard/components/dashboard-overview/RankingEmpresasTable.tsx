@@ -21,16 +21,16 @@ export const RankingEmpresasTable: React.FC<RankingEmpresasTableProps> = ({ rank
   return (
     <div className="xl:col-span-2 bg-[#111827] rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden">
       <div className="p-4 md:p-6 border-b border-white/5 flex items-center justify-between">
-        <h3 className="text-sm md:text-base font-bold text-white flex items-center gap-2">
+        <h2 className="text-sm md:text-base font-bold text-white flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
           Ranking de Empresas con Problemas
-        </h3>
-        <span className="text-[10px] md:text-xs text-gray-500">Ordenado por PDFs no encontrados</span>
+        </h2>
+        <span className="text-[10px] md:text-xs text-gray-300">Ordenado por PDFs no encontrados</span>
       </div>
 
       <div className="divide-y divide-white/5">
         {!ranking || ranking.length === 0 ? (
-          <div className="p-8 md:p-10 text-center text-gray-500 text-sm">
+          <div className="p-8 md:p-10 text-center text-gray-300 text-sm">
             <CheckCircle className="w-8 h-8 md:w-10 md:h-10 mx-auto mb-3 text-emerald-500/40" />
             <p>¡Sin problemas detectados! Todo en orden.</p>
           </div>
@@ -58,7 +58,7 @@ export const RankingEmpresasTable: React.FC<RankingEmpresasTableProps> = ({ rank
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <p className="text-white font-semibold text-xs md:text-sm truncate">{emp.razonSocial}</p>
-                <p className="text-gray-500 text-[11px] font-mono">RUC: {emp.ruc}</p>
+                <p className="text-gray-400 text-[11px] font-mono">RUC: {emp.ruc}</p>
               </div>
 
               {/* Badges */}
@@ -69,7 +69,7 @@ export const RankingEmpresasTable: React.FC<RankingEmpresasTableProps> = ({ rank
                     <span className="hidden sm:inline">sin PDF</span>
                   </span>
                 )}
-                <span className="text-[10px] md:text-xs text-gray-500 hidden sm:inline">
+                <span className="text-[10px] md:text-xs text-gray-300 hidden sm:inline">
                   {emp.totalNotificaciones} total
                 </span>
                 <button

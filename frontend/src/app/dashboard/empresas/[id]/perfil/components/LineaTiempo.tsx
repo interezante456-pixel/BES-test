@@ -53,10 +53,17 @@ export const LineaTiempo: React.FC<LineaTiempoProps> = ({
             const esSunafil = notif.origen === 'SUNAFIL';
 
             return (
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 key={notif.id}
                 onClick={() => onSelectNotificacion(notif)}
+                onKeyDown={(e) => {
+                  if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    onSelectNotificacion(notif);
+                  }
+                }}
                 className="w-full text-left relative group cursor-pointer block border-0 bg-transparent p-0"
               >
                 {/* Punto en la línea de tiempo */}

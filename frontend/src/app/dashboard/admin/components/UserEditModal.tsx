@@ -238,10 +238,17 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, user, onCl
               {AVAILABLE_MODULES.map(mod => {
                 const isChecked = form.modulosPermitidos.includes(mod.key);
                 return (
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     key={mod.key}
                     onClick={() => toggleModule(mod.key)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleModule(mod.key);
+                      }
+                    }}
                     className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
                       isChecked
                         ? 'bg-amber-500/10 border-amber-500/40 text-white'

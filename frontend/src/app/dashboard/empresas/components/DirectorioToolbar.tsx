@@ -30,7 +30,7 @@ export const DirectorioToolbar: React.FC<DirectorioToolbarProps> = ({
           onClick={() => setActiveTab('TODAS')}
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'TODAS'
-              ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+              ? 'bg-[#c2410c] text-white font-bold shadow-md shadow-orange-900/30'
               : 'text-gray-400 hover:text-white hover:bg-white/5'
           }`}
         >

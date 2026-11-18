@@ -47,10 +47,17 @@ export const PlazosProximosList: React.FC<PlazosProximosListProps> = ({
           plazos.map((item) => {
             const esUrgente = item.diasRestantes <= 2;
             return (
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 key={item.id}
                 onClick={() => onSelectNotificacion(item)}
+                onKeyDown={(e) => {
+                  if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    onSelectNotificacion(item);
+                  }
+                }}
                 className="w-full text-left py-3 flex items-center justify-between gap-3 hover:bg-white/[0.02] px-2 rounded-xl transition-colors cursor-pointer group"
               >
                 <div className="min-w-0 flex-1">

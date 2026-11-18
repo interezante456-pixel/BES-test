@@ -212,10 +212,17 @@ export const UserForm: React.FC<UserFormProps> = ({ isOpen, onSubmit, onCancel }
               {AVAILABLE_MODULES.map(mod => {
                 const isChecked = newUser.modulosPermitidos.includes(mod.key);
                 return (
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     key={mod.key}
                     onClick={() => toggleModule(mod.key)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleModule(mod.key);
+                      }
+                    }}
                     className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
                       isChecked
                         ? 'bg-indigo-600/10 border-indigo-500/40 text-white'

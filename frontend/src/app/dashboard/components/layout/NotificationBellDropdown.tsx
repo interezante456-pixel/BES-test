@@ -63,12 +63,20 @@ export const NotificationBellDropdown: React.FC = () => {
               <p className="text-xs text-gray-500 text-center py-4">No hay notificaciones sin leer.</p>
             ) : (
               recentNotifications.map((n) => (
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   key={n.id}
                   onClick={() => {
                     setShowNotifications(false);
                     router.push(`/dashboard/bandeja?empresa=${n.empresa.id}`);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setShowNotifications(false);
+                      router.push(`/dashboard/bandeja?empresa=${n.empresa.id}`);
+                    }
                   }}
                   className="w-full text-left p-2.5 rounded-xl hover:bg-white/[0.02] cursor-pointer transition-colors border border-transparent hover:border-white/5"
                 >

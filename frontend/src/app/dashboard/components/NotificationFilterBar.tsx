@@ -124,18 +124,21 @@ export const NotificationFilterBar: React.FC<NotificationFilterBarProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#111827] p-4 rounded-3xl border border-white/5">
         {/* Buscador de Texto (6 columnas) */}
         <div className="md:col-span-6 flex items-center gap-3 bg-white/[0.02] px-4 py-1.5 rounded-2xl border border-white/5">
-          <SearchIcon className="text-gray-500 w-5 h-5 flex-shrink-0" />
+          <label htmlFor="buscar-notif" className="sr-only">Buscar por RUC, Empresa o Asunto</label>
+          <SearchIcon className="text-gray-400 w-5 h-5 flex-shrink-0" aria-hidden="true" />
           <input
+            id="buscar-notif"
+            aria-label="Buscar por RUC, Empresa o Asunto"
             type="text"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar por RUC, Empresa o Asunto..."
-            className="flex-1 bg-transparent border-none text-white outline-none placeholder-gray-500 py-2 text-sm"
+            className="flex-1 bg-transparent border-none text-white outline-none placeholder-gray-400 py-2 text-sm"
           />
           {searchTerm && (
             <button
               onClick={() => onSearchChange('')}
-              className="p-1 text-gray-500 hover:text-white rounded-lg transition-colors"
+              className="p-1 text-gray-400 hover:text-white rounded-lg transition-colors"
             >
               <XIcon className="w-4 h-4" />
             </button>
@@ -144,8 +147,10 @@ export const NotificationFilterBar: React.FC<NotificationFilterBarProps> = ({
 
         {/* Input Fecha Desde (3 columnas) */}
         <div className="md:col-span-3 flex items-center gap-2 bg-white/[0.02] px-4 py-1.5 rounded-2xl border border-white/5">
-          <span className="text-xs text-gray-500 font-semibold uppercase flex-shrink-0">Desde:</span>
+          <label htmlFor="filtro-fecha-desde" className="text-xs text-gray-300 font-semibold uppercase flex-shrink-0 cursor-pointer">Desde:</label>
           <input
+            id="filtro-fecha-desde"
+            aria-label="Filtrar por fecha desde"
             type="date"
             value={startDate}
             onChange={(e) => onStartDateChange(e.target.value)}
@@ -154,7 +159,7 @@ export const NotificationFilterBar: React.FC<NotificationFilterBarProps> = ({
           {startDate && (
             <button
               onClick={() => onStartDateChange('')}
-              className="p-1 text-gray-500 hover:text-white rounded-lg transition-colors"
+              className="p-1 text-gray-400 hover:text-white rounded-lg transition-colors"
             >
               <XIcon className="w-3.5 h-3.5" />
             </button>
@@ -163,8 +168,10 @@ export const NotificationFilterBar: React.FC<NotificationFilterBarProps> = ({
 
         {/* Input Fecha Hasta (3 columnas) */}
         <div className="md:col-span-3 flex items-center gap-2 bg-white/[0.02] px-4 py-1.5 rounded-2xl border border-white/5">
-          <span className="text-xs text-gray-500 font-semibold uppercase flex-shrink-0">Hasta:</span>
+          <label htmlFor="filtro-fecha-hasta" className="text-xs text-gray-300 font-semibold uppercase flex-shrink-0 cursor-pointer">Hasta:</label>
           <input
+            id="filtro-fecha-hasta"
+            aria-label="Filtrar por fecha hasta"
             type="date"
             value={endDate}
             onChange={(e) => onEndDateChange(e.target.value)}
@@ -173,7 +180,7 @@ export const NotificationFilterBar: React.FC<NotificationFilterBarProps> = ({
           {endDate && (
             <button
               onClick={() => onEndDateChange('')}
-              className="p-1 text-gray-500 hover:text-white rounded-lg transition-colors"
+              className="p-1 text-gray-400 hover:text-white rounded-lg transition-colors"
             >
               <XIcon className="w-3.5 h-3.5" />
             </button>

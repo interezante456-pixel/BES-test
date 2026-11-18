@@ -14,12 +14,12 @@ export const SincroPorDiaChart: React.FC<SincroPorDiaChartProps> = ({ sincroPorD
     <div className="bg-[#111827] rounded-3xl border border-white/5 overflow-hidden flex flex-col justify-between">
       <div className="p-6 border-b border-white/5">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
+          <h2 className="text-base font-bold text-white flex items-center gap-2">
             <RefreshCw className="w-4 h-4 text-indigo-400" />
             Evolución de Alertas (7 Días)
-          </h3>
+          </h2>
         </div>
-        <p className="text-xs text-gray-500 mt-1">Comparación diaria entre alertas peligrosas e informativas</p>
+        <p className="text-xs text-gray-300 mt-1">Comparación diaria entre alertas peligrosas e informativas</p>
 
         {/* Leyenda */}
         <div className="flex items-center gap-4 mt-4 pt-3 border-t border-white/5 text-xs">

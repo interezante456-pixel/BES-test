@@ -29,19 +29,21 @@ export const HistoricoMensualSection: React.FC<HistoricoMensualSectionProps> = (
     <div className="bg-[#111827] rounded-3xl border border-white/5 overflow-hidden p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
         <div>
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
+          <h2 className="text-base font-bold text-white flex items-center gap-2">
             <Flame className="w-5 h-5 text-rose-500" />
             Histórico General de Alertas (Vista Mensual)
-          </h3>
-          <p className="text-xs text-gray-500 mt-1">
+          </h2>
+          <p className="text-xs text-gray-400 mt-1">
             Evolución histórica y volumen de notificaciones acumuladas por mes
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-white/[0.02] px-3 py-1.5 rounded-xl border border-white/5">
-            <span className="text-xs text-gray-500 font-semibold">Desde:</span>
+            <label htmlFor="filtro-mes-desde" className="text-xs text-gray-300 font-semibold cursor-pointer">Desde:</label>
             <input
+              id="filtro-mes-desde"
+              aria-label="Filtrar mes desde"
               type="month"
               value={startMonth}
               onChange={(e) => setStartMonth(e.target.value)}
@@ -49,8 +51,10 @@ export const HistoricoMensualSection: React.FC<HistoricoMensualSectionProps> = (
             />
           </div>
           <div className="flex items-center gap-2 bg-white/[0.02] px-3 py-1.5 rounded-xl border border-white/5">
-            <span className="text-xs text-gray-500 font-semibold">Hasta:</span>
+            <label htmlFor="filtro-mes-hasta" className="text-xs text-gray-300 font-semibold cursor-pointer">Hasta:</label>
             <input
+              id="filtro-mes-hasta"
+              aria-label="Filtrar mes hasta"
               type="month"
               value={endMonth}
               onChange={(e) => setEndMonth(e.target.value)}

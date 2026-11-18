@@ -112,7 +112,7 @@ function KpiCard({
       </div>
       <p className="text-3xl font-black text-white mb-0.5">{value.toLocaleString()}</p>
       <p className="text-xs font-semibold text-white/80">{label}</p>
-      <p className="text-[11px] text-gray-500 mt-0.5">{subtitle}</p>
+      <p className="text-[11px] text-gray-300 mt-0.5">{subtitle}</p>
     </div>
   );
 }

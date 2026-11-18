@@ -143,10 +143,17 @@ export const CalendarioGrid: React.FC<CalendarioGridProps> = ({
           const tieneCompromiso = evs.some((e) => e.tipo === 'COMPROMISO_EQUIPO');
 
           return (
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               key={diaStr}
               onClick={() => onSelectDia(diaStr, evs)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelectDia(diaStr, evs);
+                }
+              }}
               className={`w-full text-left min-h-[90px] sm:min-h-[110px] p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${
                 esHoy
                   ? 'bg-orange-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10 ring-1 ring-orange-500/30'
@@ -159,7 +166,7 @@ export const CalendarioGrid: React.FC<CalendarioGridProps> = ({
                 <span
                   className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${
                     esHoy
-                      ? 'bg-orange-500 text-white font-black'
+                      ? 'bg-[#c2410c] text-white font-black'
                       : 'text-gray-300 group-hover:text-white'
                   }`}
                 >

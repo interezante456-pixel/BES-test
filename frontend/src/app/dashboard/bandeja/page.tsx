@@ -59,10 +59,10 @@ function BandejaContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <Mail className="w-7 h-7 text-blue-400" />
             Bandeja de Entrada
-          </h2>
+          </h1>
           <p className="text-gray-400 text-sm mt-1">
             Notificaciones SUNAT sin revisar. Al abrir el PDF, se marcarán como revisadas para todos los usuarios de esta empresa.
           </p>
@@ -111,10 +111,10 @@ function BandejaContent() {
       ) : (
         <div className="bg-[#111827] rounded-3xl border border-white/5 overflow-hidden">
           <div className="p-6 border-b border-white/5 flex items-center justify-between">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
               <Mail className="w-5 h-5 text-blue-400" />
               Notificaciones Sin Leer
-            </h3>
+            </h2>
             <div className="flex items-center gap-3">
               {notificaciones.length > 0 && (
                 <button
@@ -135,7 +135,7 @@ function BandejaContent() {
               <div className="p-16 text-center text-gray-400">
                 <MailOpen className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 <p className="font-semibold text-lg">¡Bandeja vacía!</p>
-                <p className="text-sm text-gray-500 mt-2">No tienes notificaciones sin leer.</p>
+                <p className="text-sm text-gray-300 mt-2">No tienes notificaciones sin leer.</p>
                 <button
                   onClick={() => router.push('/dashboard/archivo')}
                   className="mt-4 text-sm text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors"

@@ -60,7 +60,7 @@ export default function MisAsignadasPage() {
         <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
           <UserCheck className="w-7 h-7" />
         </div>
-        <h2 className="text-xl font-bold text-white">Módulo en Fase Beta Privada</h2>
+        <h1 className="text-xl font-bold text-white">Módulo en Fase Beta Privada</h1>
         <p className="text-xs text-gray-400 max-w-md mx-auto">
           Este apartado se encuentra actualmente en fase de pruebas y está disponible exclusivamente para Super Admin.
         </p>
@@ -168,7 +168,7 @@ export default function MisAsignadasPage() {
             <p className="text-sm font-bold text-gray-300">
               No tienes notificaciones en este estado
             </p>
-            <p className="text-xs text-gray-500 max-w-sm mx-auto">
+            <p className="text-xs text-gray-300 max-w-sm mx-auto">
               Cuando un administrador te asigne notificaciones para dar seguimiento o resolver requerimientos, aparecerán aquí.
             </p>
           </div>
@@ -181,10 +181,17 @@ export default function MisAsignadasPage() {
               const Icon = estConfig.icon;
 
               return (
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   key={notif.id}
                   onClick={() => setSelectedNotif(notif)}
+                  onKeyDown={(e) => {
+                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      setSelectedNotif(notif);
+                    }
+                  }}
                   className="w-full text-left p-4 hover:bg-white/[0.02] transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                 >
                   <div className="space-y-1.5 min-w-0 flex-1">

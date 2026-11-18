@@ -94,7 +94,7 @@ export default function CalendarioPage() {
         <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
           <CalendarIcon className="w-7 h-7" />
         </div>
-        <h2 className="text-xl font-bold text-white">Módulo en Fase Beta Privada</h2>
+        <h1 className="text-xl font-bold text-white">Módulo en Fase Beta Privada</h1>
         <p className="text-xs text-gray-400 max-w-md mx-auto">
           El Calendario de Vencimientos se encuentra actualmente en fase de pruebas y está restringido para Super Admin.
         </p>

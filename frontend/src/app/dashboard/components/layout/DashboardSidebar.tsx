@@ -47,7 +47,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <div className="flex items-center">
             <OraconLogo size="sm" showSubtitle={false} className="mr-3" />
             <div>
-              <h1 className="text-lg font-bold text-white tracking-tight leading-none">ORACON</h1>
+              <span className="text-lg font-bold text-white tracking-tight leading-none">ORACON</span>
               <p className="text-[10px] text-orange-400 font-medium tracking-wide">ESTUDIO CONTABLE</p>
             </div>
           </div>
@@ -70,16 +70,17 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             onClick={onOpenProfile}
             className="w-full text-left flex items-center gap-3 p-2.5 -mx-1 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/5 cursor-pointer transition-all group"
             title="Ver mi perfil de usuario"
+            aria-label={`Ver perfil de ${user?.nombre || 'usuario'}`}
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 border border-white/10 flex items-center justify-center text-white font-bold flex-shrink-0 group-hover:scale-105 transition-transform shadow-md shadow-indigo-500/20">
+            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 border border-white/10 inline-flex items-center justify-center text-white font-bold flex-shrink-0 group-hover:scale-105 transition-transform shadow-md shadow-indigo-500/20">
               {user?.nombre?.charAt(0).toUpperCase() || 'U'}
-            </div>
-            <div className="overflow-hidden flex-1 min-w-0">
-              <p className="text-xs font-bold text-white truncate group-hover:text-indigo-400 transition-colors">
+            </span>
+            <span className="overflow-hidden flex-1 min-w-0 block">
+              <span className="text-xs font-bold text-white truncate group-hover:text-indigo-400 transition-colors block">
                 {user?.nombre}
-              </p>
-              <p className="text-[11px] text-gray-400 truncate">{user?.email}</p>
-            </div>
+              </span>
+              <span className="text-[11px] text-gray-300 truncate block">{user?.email}</span>
+            </span>
           </button>
 
           <button
@@ -92,7 +93,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             Cerrar Sesión
           </button>
 
-          <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-gray-500 font-mono">
+          <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-gray-400 font-mono">
             <span>BES Suite</span>
             <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-gray-400 font-semibold tracking-wide">
               {APP_CONFIG.version}

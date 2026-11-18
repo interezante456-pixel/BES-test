@@ -136,7 +136,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+          <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
             <Clock className="w-3.5 h-3.5" />
             {new Date(notificacion.fechaMensaje).toLocaleDateString('es-PE', {
               day: '2-digit',

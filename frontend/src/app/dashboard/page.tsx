@@ -57,10 +57,10 @@ export default function DashboardPage() {
       {/* Header con Selector de Entidad */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <TrendingUp className="w-7 h-7 text-indigo-400" />
             Panel de Control 360°
-          </h2>
+          </h1>
           <p className="text-gray-400 text-sm mt-1">
             Resumen centralizado de alertas, notificaciones y estado de robots de monitoreo.
           </p>

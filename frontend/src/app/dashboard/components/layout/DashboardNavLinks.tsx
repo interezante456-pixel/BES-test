@@ -39,7 +39,7 @@ export const DashboardNavLinks: React.FC<DashboardNavLinksProps> = ({ user, onIt
     <nav className="flex-1 p-4 md:p-6 space-y-4 overflow-y-auto">
       {/* SECCIÓN 1: GENERAL */}
       <div>
-        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-4 mb-2">General</p>
+        <p className="text-[10px] font-bold text-gray-300 font-semibold uppercase tracking-widest px-4 mb-2">General</p>
         <div className="space-y-1">
           <Link
             href="/dashboard/morning-brief"
@@ -161,7 +161,7 @@ export const DashboardNavLinks: React.FC<DashboardNavLinksProps> = ({ user, onIt
       {hasModule('SUNAT') && (
         <div>
           <div className="flex items-center justify-between px-4 mb-2">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">SUNAT (Buzón SOL)</p>
+            <p className="text-[10px] font-bold text-gray-300 font-semibold uppercase tracking-widest">SUNAT (Buzón SOL)</p>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           </div>
           <div className="space-y-1">
@@ -216,7 +216,7 @@ export const DashboardNavLinks: React.FC<DashboardNavLinksProps> = ({ user, onIt
       {hasModule('SUNAFIL') && (
         <div>
           <div className="flex items-center justify-between px-4 mb-2">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">SUNAFIL (Casilla)</p>
+            <p className="text-[10px] font-bold text-gray-300 font-semibold uppercase tracking-widest">SUNAFIL (Casilla)</p>
             <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
           </div>
           <div className="space-y-1">
@@ -257,7 +257,7 @@ export const DashboardNavLinks: React.FC<DashboardNavLinksProps> = ({ user, onIt
 
       {/* SECCIÓN 4: SISTEMA */}
       <div>
-        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-4 mb-2">Sistema</p>
+        <p className="text-[10px] font-bold text-gray-300 font-semibold uppercase tracking-widest px-4 mb-2">Sistema</p>
         <div className="space-y-1">
           {(isSuperAdmin || user?.rol === 'ADMIN') && (
             <Link

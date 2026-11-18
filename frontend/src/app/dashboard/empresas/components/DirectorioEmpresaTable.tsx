@@ -60,7 +60,7 @@ export const DirectorioEmpresaTable: React.FC<DirectorioEmpresaTableProps> = ({
                 <td colSpan={6} className="px-6 py-16 text-center text-gray-400">
                   <Building2 className="w-10 h-10 mx-auto text-gray-600 mb-3" />
                   <p className="font-semibold text-white">No se encontraron empresas</p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-300 mt-1">
                     {searchTerm ? 'Prueba ajustando los términos de búsqueda' : 'Comienza vinculando tu primera empresa'}
                   </p>
                 </td>
